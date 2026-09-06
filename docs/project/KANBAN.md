@@ -61,9 +61,9 @@
 | TIPITAKA-001 | Tipiṭaka (OpenTipitaka Pa-Auk): module Library/Reader song ngữ/Search + 26 language pack + import script + quick-action bolt | 🔄 doing (DEMO trong DEV) | 18813d6 (code+DB DEMO 1.69MB); bước production F/D/B/C trên nhánh mới — PLAN-021 + docs/Bangiao/bangiao_tipitaka.md |
 | SHERPA-WP23-01 | WP2 speaker waveform + WP3 voice commands (thâu hoạch 01a039e9) | ✅ done + CI xanh (chờ nghiệm thu máy) | 01f5235 + 8c2e868 (run 33336160268); việc tiếp (WP3 translate action, WP-Z) — PLAN-022 + docs/Bangiao/bangiao_sherpa.md |
 | HOME-001 | Bỏ phần "xác nhận nỗ lực" (slider + nút) ở tab Home — owner thấy dư thừa | ✅ done + CI xanh (chờ nghiệm thu) | thẻ còn lại: streak "X ngày liên tiếp"; streak không tự tăng nữa (đăng ký khi cần) |
-| READ-DEV-001 | Thư viện đọc: quét + hiển thị file trên máy (SAF folder, như thư viện nhạc) | ✅ done + CI xanh (chờ nghiệm thu máy) | native in4up/textlib (DocumentsContract đệ quy) + TextDeviceProvider + tab Thiết bị thành danh sách quét; persist folder qua restart |
+| READ-DEV-001 | Thư viện đọc: quét + hiển thị file trên máy (SAF folder, như thư viện nhạc) | ✅ done + CI xanh (chờ nghiệm thu máy) | native in4up/textlib (DocumentsContract đệ quy) + TextDeviceProvider + tab Thiết bị thành danh sách quét; persist folder qua restart; hardening: percent-encoding an toàn (hết "Illegal percent encoding" + tile màu theo ext |
 | LHB-004 | Học thuộc lòng: lặp TTS RIÊNG từng câu (tùy số lần/câu) + persist theo bài — re-apply commit bị revert | ✅ done + CI xanh (chờ nghiệm thu máy) | re-apply b631395 + 3 bug fix (compile: Map.map→Iterable; analyze: chuỗi ?.map().where() → helper; runtime: jsonEncode Iterable) — CI xanh 33944392085 |
-| WORDLIST-002 | Import WordList 8 cột chuẩn: nạp CHÍNH XÁC khi dán (fix example_simple/complex bị rơi + phẩy không nháy lệch cột + header VN) | ✅ done (chờ CI) | WordTableParser (pure, test được) + 15 test; căn neo word/ipa/language + cột hấp thụ thông minh + hàng thiếu cột |
+| WORDLIST-002 | Import WordList 8 cột chuẩn: nạp CHÍNH XÁC khi dán (fix example_simple/complex bị rơi + phẩy không nháy lệch cột + header VN) | ✅ done (chờ CI) | WordTableParser (pure, test được) + 17 test (T6/T7); _viBase ĐẦY ĐỦ 150 entries (khôi phục đ U+0111); căn neo word/ipa/language + cột hấp thụ thông minh + hàng thiếu cột + mảnh meaning 1 từ gộp đúng |
 | STT-LRC-LANG-01 | Tạo lời (LRC) bằng Whisper đa ngữ: chip chọn ngôn ngữ + 'auto' tự nhận diện (hết hardcode 'en') | ✅ done + CI xanh (chờ nghiệm thu máy) | run 33977299465; chip 14 ngôn ngữ (mặc định auto) + 3 call sites hết hardcode 'en' + VAD/CLI/FFI/plugin đều hỗ trợ 'auto' | _LrcModelSelector + 14 ngôn ngữ (mặc định auto); 3 call sites hardcode 'en' → language param; VAD pipeline + transcribeAuto + transcribeFile đều nhận language |
 
 ---
@@ -1578,6 +1578,13 @@
   - 2026-09-05 | created→done | agent arena/01a0251e-in4up | 4 file mới +
     sửa library_screen/main/MainActivity; chờ CI + nghiệm thu máy
     (chọn folder → thấy danh sách → mở file → mở lại app vẫn còn folder)
+  - 2026-09-06 | hardening | agent arena/01a0251e-in4up | fix crash
+    "Illegal percent encoding in URI" (màn đỏ) khi TÊN THƯ MỤC chứa ký tự
+    đặc biệt: native `safeDecodePercent` (fallback `getTreeDocumentId` +
+    `buildChildDocumentsUriUsingTree` — chỉ encode lại % hợp lệ, slash →
+    %2F) + Dart `TextDeviceProvider.safeDecodeComponent` (folderLabel decode
+    an toàn, không throw); + màu tile theo ext (pdf đỏ / docx xanh / lrc-srt
+    cam / text xanh lá)
 
 ### LHB-004 — Lặp TTS RIÊNG từng câu (số lần tùy ý/câu) + persist theo bài
 - **Trạng thái:** done (chờ CI + nghiệm thu máy)
@@ -1670,6 +1677,23 @@
 - **Lịch sử:**
   - 2026-09-05 | created→done | agent arena/01a0251e-in4up | WordTableParser
     + 15 test; chờ CI (flutter test chạy trong pipeline)
+  - 2026-09-06 | hardening | agent arena/01a0251e-in4up |
+    (1) `_viBase` mở rộng ĐẦY ĐỦ 150 entries \uXXXX (mọi dấu Latin,
+    đả đủ khối U+1E00+ tiếng Việt — verify bằng Python unicodedata:
+    không thiếu ký tự VN nào, không key trùng — key trùng là lỗi COMPILE
+    Dart). Phát hiện + sửa regression: bản regenerate làm mất U+0111 (đ)
+    → "chủ đề" → "chue" ≠ "chude" → cột topic bị rơi (test header VN
+    sẽ fail CI) → đã khôi phục.
+    (2) Bồi hoàn alignRow m==n (T6): ô cột ipa là TỪ THÔNG THƯỜNG
+    (chỉ a-zA-Z — IPA-trần luôn có ký tự ngoài Latin ʃ θ ə ð ŋ...) +
+    không có /.../ nào trong hàng → coi là mảnh meaning bị xé → gộp
+    vào meaning (trước: chỉ gộp khi mảnh có khoảng trắng → hàng
+    "apple, to eat, fruits, , ex, exs, exc, en" để "fruits" làm
+    phonetic rác). IPA-trần có ký tự ngoài Latin ("æpl") vẫn GIỮ làm
+    phonetic — không gộp nhầm.
+    (3) +2 regression test T6/T7 (tổng 17 test); Python simulation
+    replicate đúng logic Dart cuối: 19/19 pass (17 test file + T6b +
+    T8-guard)
 
 ### CABIN-001 — Cabin dịch: không khởi động được mic / nhận diện giọng nói
 - **Trạng thái:** done + CI xanh 33961600553 @ a1a36e5 (chờ nghiệm thu máy)

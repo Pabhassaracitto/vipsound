@@ -27,7 +27,7 @@
 | READ-630-03 | Marker "từ đã lưu": tắt mặc định, bật khi cần + legend | ✅ done | toggle toolbar PDF+Web (chờ nghiệm thu build) |
 | READ-630-04 | Lưu hàng loạt thông minh (từ/cụm/câu → topic + language) PDF + Web | ✅ done | extractor dùng chung + language (chờ nghiệm thu) |
 | PDF-W0 | Wave 0 PDF Reader: nối selection + TTS câu + định danh file + hệ toạ độ + i18n + test sàn | 🔨 doing | code + CI 🟢 05-09-2026 (`370ff91`, run 33984585516: analyze 0 error + test rule #5 xanh) trên `arena/01a07250-in4up`; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` ở máy dev |
-| PDF-W1 | Wave 1 PDF Reader (đợt A): mục lục + tìm trong file + thumbnail + nhảy trang + phím tắt | 🔨 doing | code + CI 🟢 06-09-2026 (`bca3bd3`, run 34011982375 — analyze 0 error với lint BẬT + test rule #5 xanh) trên `arena/01a07250-in4up`; ADR-0004; CÒN nghiệm thu thiết bị + 1.4/1.5/1.7/1.8 chưa làm (1.9 đã xong) |
+| PDF-W1 | Wave 1 PDF Reader (đợt A+B): mục lục + tìm trong file + thumbnail + nhảy trang + phím tắt + chủ đề đọc | 🔨 doing | code + CI 🟢 06-09-2026 (đợt A `032f321` run 34012087643; đợt B 1.5 run 34042635098 — analyze 0 error với lint BẬT + test rule #5 xanh) trên `arena/01a07250-in4up`; ADR-0004; docs §4.1+§4.2; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` (9 file, chưa chạy lần nào) + 1.4/1.7/1.8 |
 | READ-630-05 | Nhận diện text ĐÃ LƯU khi lưu nhiều text + gợi ý hành động (thêm ngữ cảnh/cập nhật/bỏ qua) | 📋 proposed | nền: badge đã-có + smart-fill đã có (PLAN-015) |
 | LISTEN-630-01 | Tab Nghe: AB loop bottom overflow 24px + nút "lặp câu tiếp theo" | ✅ done | LRC budget + onPanelChanged (chờ nghiệm thu) |
 | LISTEN-823-01 | Tab Nghe: rèm LRC + AI sheet + dịch Hiểu + transcript đúng audio | ✅ done | 1d05ce9; CI run 32660616256 xanh (chờ QA đổi file nhanh) |
@@ -707,6 +707,17 @@
     pubspec.lock): auto-merge sạch, `priority_ui_overrides.dart` lên 318 key, **0 trùng**
     (kiểm tra bằng script đếm key — auto-merge không đảm bảo hết trùng key trong cùng
     một const map).
+  - 2026-09-06 | đợt B (1.5) | agent | `services/pdf_reader_theme.dart` (thuần: veil
+    màu + clamp + prefs khoan dung) + `widgets/pdf_page_veils.dart` (dịch veil sang
+    `pagePaintCallbacks`) + `widgets/pdf_reader_theme_sheet.dart` (4 theme + slider độ
+    sáng) + 9 key i18n (catalog 327 key, 0 trùng) + `test/pdf_reader/pdf_reader_theme_test.dart`
+    (223 dòng). CI 🟢 run 34042635098 **ngay lần đầu** — vì mọi tên API pdfrx đối
+    chiếu tag `pdfrx-v2.2.24` trước khi gõ (bài học §4.1.1).
+  - 2026-09-06 | cứu worktree | agent | sandbox bị clone lại lần 2: HEAD rơi về
+    `a55dfa8`, ref `origin/arena/*` mất, 53 file công việc thành uncommitted. Không mất
+    gì: đóng băng bằng `git add -A && git commit` → `git ls-remote` xác nhận GitHub còn
+    `032f321` → fetch refspec tường minh → `git diff` rỗng → `git reset --hard`. Củng cố
+    rule của repo: **push liên tục là backup duy nhất**.
 
 ### PDF-W0 — Wave 0 PDF Reader: sửa cho đúng cái đã có (không thêm tính năng)
 - **Trạng thái:** doing — code xong, CI 🟢 (analyze 0 error + rule #5 test xanh); còn nghiệm thu thiết bị

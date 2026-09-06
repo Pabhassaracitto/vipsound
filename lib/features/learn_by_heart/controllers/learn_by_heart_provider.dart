@@ -14,6 +14,7 @@ class LearnByHeartProvider extends ChangeNotifier {
   List<LearnByHeartItem> _items = [];
   bool _isLoading = false;
   int _streak = 0;
+  Future<void>? _loadFuture;
 
   RecitationCategory? _selectedCategory;
   ReviewState? _selectedStateFilter;
@@ -76,7 +77,11 @@ class LearnByHeartProvider extends ChangeNotifier {
 
   // ==================== LIFECYCLE & LOADING ====================
 
-  Future<void> loadData() async {
+  Future<void> loadData() {
+    return _loadFuture ??= _loadData();
+  }
+
+  Future<void> _loadData() async {
     _isLoading = true;
     notifyListeners();
 
@@ -146,6 +151,10 @@ class LearnByHeartProvider extends ChangeNotifier {
 
   /// Thêm hoặc cập nhật bài học thuộc lòng
   Future<void> saveItem(LearnByHeartItem item) async {
+    // Reader actions can happen before the app's eager loadData() completes.
+    // Wait for that same load operation so a new Tipiṭaka item is not lost
+    // when the initial preferences read finishes.
+    await loadData();
     final index = _items.indexWhere((i) => i.id == item.id);
     if (index >= 0) {
       _items[index] = item;

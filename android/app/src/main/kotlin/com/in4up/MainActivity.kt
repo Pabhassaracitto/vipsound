@@ -157,9 +157,7 @@ class MainActivity : FlutterActivity() {
                     }
                     if (!textExtensions.contains(ext)) continue
 
-                    val docUri = ContentUris.withAppendedId(
-                        DocumentsContract.buildDocumentUriUsingTree(treeUri, id),
-                    )
+                    val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, id)
                     out.add(
                         mapOf(
                             "uri" to docUri.toString(),

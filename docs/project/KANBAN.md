@@ -60,8 +60,15 @@
 | STT-CRASH-001 | Crash SIGSEGV libwhisper.so khi tạo lời — serialize request native + pre-flight + align model file plugin | ✅ done + CI xanh | af65675 + 9ad6f85 (run 33687604868); root cause: plugin không check NULL sau whisper_init_from_file; crash 2 = file plugin ggml-tiny.bin cũ/hỏng trong khi manager verify ggml-tiny-q5_1.bin (chờ nghiệm thu thiết bị) |
 | TIPITAKA-001 | Tipiṭaka (OpenTipitaka Pa-Auk): module Library/Reader song ngữ/Search + 26 language pack + import script + quick-action bolt | 🔄 doing (DEMO trong DEV) | 18813d6 (code+DB DEMO 1.69MB); bước production F/D/B/C trên nhánh mới — PLAN-021 + docs/Bangiao/bangiao_tipitaka.md |
 | SHERPA-WP23-01 | WP2 speaker waveform + WP3 voice commands (thâu hoạch 01a039e9) | ✅ done + CI xanh (chờ nghiệm thu máy) | 01f5235 + 8c2e868 (run 33336160268); việc tiếp (WP3 translate action, WP-Z) — PLAN-022 + docs/Bangiao/bangiao_sherpa.md |
+| HOME-001 | Bỏ phần "xác nhận nỗ lực" (slider + nút) ở tab Home — owner thấy dư thừa | ✅ done + CI xanh (chờ nghiệm thu) | thẻ còn lại: streak "X ngày liên tiếp"; streak không tự tăng nữa (đăng ký khi cần) |
+| READ-DEV-001 | Thư viện đọc: quét + hiển thị file trên máy (SAF folder, như thư viện nhạc) | ✅ done + CI xanh (chờ nghiệm thu máy) | native in4up/textlib (DocumentsContract đệ quy) + TextDeviceProvider + tab Thiết bị thành danh sách quét; persist folder qua restart |
+| LHB-004 | Học thuộc lòng: lặp TTS RIÊNG từng câu (tùy số lần/câu) + persist theo bài — re-apply commit bị revert | ✅ done + CI xanh (chờ nghiệm thu máy) | re-apply b631395 + 3 bug fix (compile: Map.map→Iterable; analyze: chuỗi ?.map().where() → helper; runtime: jsonEncode Iterable) — CI xanh 33944392085 |
+| WORDLIST-002 | Import WordList 8 cột chuẩn: nạp CHÍNH XÁC khi dán (fix example_simple/complex bị rơi + phẩy không nháy lệch cột + header VN) | ✅ done (chờ CI) | WordTableParser (pure, test được) + 15 test; căn neo word/ipa/language + cột hấp thụ thông minh + hàng thiếu cột |
+| STT-LRC-LANG-01 | Tạo lời (LRC) bằng Whisper đa ngữ: chip chọn ngôn ngữ + 'auto' tự nhận diện (hết hardcode 'en') | ✅ done + CI xanh (chờ nghiệm thu máy) | run 33977299465; chip 14 ngôn ngữ (mặc định auto) + 3 call sites hết hardcode 'en' + VAD/CLI/FFI/plugin đều hỗ trợ 'auto' | _LrcModelSelector + 14 ngôn ngữ (mặc định auto); 3 call sites hardcode 'en' → language param; VAD pipeline + transcribeAuto + transcribeFile đều nhận language |
 
 ---
+| CABIN-001 | Cabin dịch: "Không thể khởi động micro / nhận diện giọng nói" — fix mic/STT | ✅ done + CI xanh (chờ nghiệm thu máy) | self-heal session treo + retry + keep-alive + lỗi chẩn đoán cụ thể + bỏ cap 2 phút + dictation + Shadowing mic thành toggle (chặn mic treo) |
+| SHERPA-WP4-01 | Live STT offline qua sherpa Zipformer (cabin không phụ thuộc speech service) | ✅ done (chờ CI + nghiệm thu máy) | docs/Bangiao/bangiao_sherpa_wp4_live_stt.md + PLAN-023; hoàn thiện N1-N4 (VI simulated streaming + EN streaming, SherpaModelManager ASR, UI Quản lý Model AI, Cabin engine toggle, priority i18n, test unit) |
 
 ## Card chi tiết
 
@@ -242,10 +249,11 @@
   - 2026-08-21 | created | owner via arena/019fe630-vipsound | issue mới 2
 
 ### PLAN-008 — Sẵn sàng tích hợp sherpa live stream + cabin STS
-- **Trạng thái:** proposed
-- **Nội dung:** EL sound → text đích real-time, TTS nếu muốn, nhắc đeo tai nghe. Đã xong VAD singleton, pipeline isolate, RECORD_AUDIO. Chờ bạn đưa branch sherpa mẫu + .onnx model để thay EnergyVad fallback bằng sherpa_onnx thật.
+- **Trạng thái:** done (chờ nghiệm thu thiết bị)
+- **Nội dung:** EL sound → text đích real-time, TTS nếu muốn, nhắc đeo tai nghe. Đã triển khai `SttsCabinService` (STS pipeline), `LiveCabinScreen` (màn hình dịch cabin song ngữ thời gian thực) và `LiveCaptionBubble` (bong bóng nổi phụ đề cabin nổi toàn app).
 - **Lịch sử:**
   - 2026-08-21 | created | owner via arena/019fe630-vipsound | issue mới 3 + Section3 handover
+  - 2026-09-05 | doing→done | agent arena/01a0692a-in4up | hoàn thiện WP1: SttsCabinService, LiveCabinScreen, LiveCaptionBubble, banner tai nghe, QuickActions menu
 
 ### READ-630-01 — Tab Đọc: lưu cụm/câu (mode không màu) kèm chọn/tạo topic + language
 - **Trạng thái:** done (chờ nghiệm thu build)
@@ -1521,3 +1529,260 @@
   - 2026-09-03 | done→doing | agent arena/01a0251e-in4up | bàn giao
     docs/Bangiao/bangiao_sherpa.md (5374214) + PLAN-022; card bổ sung
     mục "Việc tiếp theo" + row tổng quan trỏ PLAN-022
+
+### HOME-001 — Bỏ phần "xác nhận nỗ lực" ở tab Home
+- **Trạng thái:** done + CI xanh 33944392085 (chờ nghiệm thu)
+- **Nguồn:** yêu cầu owner: "Loại bỏ phần xác nhận nỗ lực ở tab Home. Vì thấy nó có phần dư thừa."
+- **Fix:** `lib/screens/home/widgets/focus_streak_card.dart` — xóa prompt
+  "Hôm nay bạn nỗ lực bao nhiêu? (1-10)" + `_EffortSlider` (slider 1-10 +
+  nút "Xác nhận nỗ lực") + dòng "Đánh giá nỗ lực hoàn tất". Thẻ còn lại
+  đúng phần cốt lõi: icon lửa + "NHỊP ĐIỆU HỌC TẬP" + "X ngày liên tiếp".
+- **Ghi chú:** `FocusProvider` giữ nguyên (streak vẫn hiện giá trị đã lưu).
+  Streak KHÔNG tự tăng nữa vì logic tăng streak gắn với action xác nhận
+  (saveEffort) đã bị bỏ. Nếu owner muốn streak theo hoạt động thật
+  (mở app/học bài) → đăng ký việc mới.
+- **Lịch sử:**
+  - 2026-09-05 | created→done | agent arena/01a0251e-in4up | xóa UI +
+    class _EffortSlider; chờ CI + nghiệm thu
+
+### READ-DEV-001 — Thư viện đọc: quét + hiển thị file trên máy (như thư viện nhạc)
+- **Trạng thái:** done + CI xanh 33944392085 (chờ nghiệm thu máy)
+- **Nguồn:** yêu cầu owner: "Thư viện nhạc đã có thể quét từ máy, vậy hãy làm
+  cho thư viện đọc cũng có thể quét và hiển thị từ máy thay vì phải mở sâu vào
+  trong hệ thống bất tiện cho người dùng."
+- **Kiến trúc (ghép theo AUDLIB-001):**
+  - **Native** `MainActivity.kt` — MethodChannel `in4up/textlib`:
+    `scanTree(treeUri)` liệt kê ĐỆ QUY DocumentsContract từ tree URI (SAF),
+    lọc extension đọc (txt/lrc/srt/md/markdown/json/docx/pdf), trả
+    {uri, name, sizeBytes, dateModifiedMs, ext}; `keepTreePermission`
+    (takePersistableUriPermission — chọn 1 lần, mở app sau vẫn quét);
+    `copyContentToCache` (content:// → file thật trong cache).
+    Giới hạn: depth ≤ 12, ≤ 5000 file — không quét hang.
+  - **Dart:** `models/text_device_entry.dart` (model + label) ·
+    `services/text_device_channel.dart` (channel wrapper, an toàn
+    MissingPluginException trên iOS/Linux) · `providers/text_device_provider.dart`
+    (pickFolder qua FilePicker.getDirectoryPath + persist URI vào prefs +
+    scan/search/forget) · đăng ký trong `main.dart`.
+  - **UI** tab "Thiết bị" (`library_screen.dart`): chưa chọn folder →
+    nút "Chọn thư mục & quét"; đã chọn → header folder (tên + số tài liệu
+    + nút quét lại + menu quét lại/đổi/bỏ chọn) + danh sách file
+    (icon theo loại, tên, kích thước · ngày · ext), tìm kiếm dùng thanh
+    search chung, chạm → mở (copy cache → persist app docs → loadTextFile /
+    PdfReaderScreen, thêm vào Gần đây). 2 nút chọn file riêng lẻ GIỮ NGUYÊN
+    (file ngoài thư mục + nền tảng không hỗ trợ quét như iOS).
+- **Vì sao SAF thay vì MediaStore:** file văn bản KHÔNG có trong
+  MediaStore; scoped storage (targetSdk 35) không cho quyền đọc tùy ý
+  (MANAGE_EXTERNAL_STORAGE = quyền đặc biệt, Play Store hạn chế).
+  Chọn thư mục 1 lần qua hệ thống = cách chuẩn của app đọc sách.
+- **Lịch sử:**
+  - 2026-09-05 | created→done | agent arena/01a0251e-in4up | 4 file mới +
+    sửa library_screen/main/MainActivity; chờ CI + nghiệm thu máy
+    (chọn folder → thấy danh sách → mở file → mở lại app vẫn còn folder)
+
+### LHB-004 — Lặp TTS RIÊNG từng câu (số lần tùy ý/câu) + persist theo bài
+- **Trạng thái:** done (chờ CI + nghiệm thu máy)
+- **Nguồn:** yêu cầu owner: "khi chọn x3 là tất cả đều phát 3 lần mỗi câu
+  rất tốt, nhưng tôi muốn chỉnh chi tiết thêm để có thể chỉnh đặc biệt cho
+  câu mình muốn phát số lần tùy ý (câu khó nghe nhiều lần, câu dễ 1 lần)".
+- **Bối cảnh:** commit `b631395` đã implement đúng tính năng này (ngày
+  2026-09-04) nhưng bị REVERT (`f782cd6`) 5 phút sau, không có lý do trong
+  message. Owner yêu cầu lại → re-apply.
+- **Fix:** `git cherry-pick b631395` → commit `1665d53` (apply sạch, không
+  conflict vì không commit nào sau revert đụng vào file LHB):
+  - `LearnByHeartItem.lineRepeatOverrides` (Map<int,int> line→count 1..999)
+    + toJson key stringified + fromJson tolerant + copyWith — persist
+    qua restart (Hive).
+  - `MultilingualAudioService`: restoreLineOverrides (khi mở bài),
+    lineRepeatOverride(line), clearLineRepeatOverride (về mặc định),
+    lineRepeatOverridesSnapshot (để persist).
+  - `AudioControlBar`: khi có câu đang phát → bộ [−] [Câu N: 3×] [+]:
+    bấm chip = menu số lần (1/2/3/4/5/7/10/tùy chỉnh), NHẤN GIỮ chip =
+    về mặc định; callback onLineRepeatChanged cho màn hình persist.
+  - `BilingualVerseView`: chip lặp từng câu có onLongPress reset + persist.
+  - `new_learning_screen` + `chunking_flow_screen`: restore khi mở bài +
+    persist qua LearnByHeartProvider.saveItem.
+  - i18n +4 getter (repeatLineCountTitle/Plus/Minus/ResetLineRepeat)
+    đủ vi/en/hi/zh/zh_TW/si; +3 test trong learn_by_heart_test.dart.
+- **3 bug trong code gốc b631395 (tìm ra bằng CI bisect — code gốc chưa
+  bao giờ chạy CI xanh, cả 2 run b631395/f782cd6 đều đỏ do bug tipitaka
+  liền trước chìm mất lỗi):**
+  1. COMPILE: `fromJson` dùng `Map.map()` (trả `Iterable<MapEntry>`,
+     không phải Map) rồi gọi `.entries` → getter không tồn tại.
+  2. ANALYZE: chuỗi `?.map(...).where(...).toMap() ?? const {}` lỗi
+     (bị bắt khi bisect state-by-state) → thay bằng helper
+     `_parseLineRepeatOverrides(dynamic raw)` (forEach + clamp, tolerant
+     như cũ).
+  3. RUNTIME: `toJson` dùng `lineRepeatOverrides.map(...)` (Iterable) →
+     jsonEncode thành mảng {key,value} → fromJson cast fail → thay bằng
+     map-collection `{'\${k}': v}`.
+- **Lưu ý cho owner:** revert f782cd6 (chỉ 5 phút sau b631395) rất có thể
+  là do CI đỏ — root cause bây giờ đã rõ. Nếu còn lỗi UX cụ thể → báo lại.
+- **Lịch sử:**
+  - 2026-09-04 | (nhánh nguồn) b631395 created → f782cd6 reverted (owner)
+  - 2026-09-05 | created→done | agent arena/01a0251e-in4up | cherry-pick
+    lại + CI bisect (8 run, log CI không đọc được — chỉ có oracle 1-bit
+    xanh/đỏ) + 3 bug fix → CI xanh 33944392085 (chờ nghiệm thu máy)
+
+### WORDLIST-002 — Import WordList 8 cột chuẩn: nạp CHÍNH XÁC khi dán
+- **Trạng thái:** done + CI xanh 33944392085 (chờ nghiệm thu máy)
+- **Fix CI:** `_normAliases` — `Map.map()` trả `Iterable<MapEntry>`,
+  không phải Map (chạy vào 5409728; phát hiện qua CI analyze đỏ).
+- **Nguồn:** yêu cầu owner: "Trong worklist chỗ Định dạng hỗ trợ: theo
+  hướng dẫn .csv/.txt bằng cột (cần dòng header): word, meaning, ipa,
+  topic, example, example_simple, example_complex, language → Hãy đảm bảo
+  chắc chắn rằng khi tôi dán vào như hướng dẫn thì từ vựng được nạp chính
+  xác. Vì trước đây tôi thử nhờ gemini tạo danh sách từ vựng theo hướng dẫn
+  trên thì nó hiện chưa chính xác hoàn toàn, còn nhiều chỗ chưa đúng."
+- **Root cause (3 bug cộng dồn):**
+  1. **Header `example_simple`/`example_complex` bị BỎ SÓT:** key alias
+     trong map có gạch dưới (`'example_simple'`) nhưng header được
+     normalize BỎ gạch dưới (`examplesimple`) → tra map không thấy → 2
+     cột đó bị drop im lặng (mapped = null → skip).
+  2. **Phẩy KHÔNG bọc nháy trong meaning/example (Gemini hay sinh vậy):**
+     hàng có NHIỀU ô hơn header → mapping theo vị trí → cột bị LỆCH PHẢI
+     (language nhận rác, meaning bị cắt) → "nhiều chỗ chưa đúng".
+  3. **Header tiếng Việt có dấu map sai:** regex strip ký tự ngoài
+     U+00C0-024F chạy TRƯỚC khi bỏ dấu → các chữ U+1E00+ (ừ ự ấ ể ổ...)
+     bị XÓA HOÀN TOÀN (không map về chữ thường): "từ vựng" → "tvng",
+     "chủ đề" → "chd" → alias không bao giờ khớp.
+- **Fix:** `word_import_sheet.dart` — tách parser thuần
+  `WordTableParser` (public static, test được; widget chỉ gọi):
+  - `normKey`: bảng bỏ dấu tiếng Việt ĐẦY ĐỦ 64 ký tự (escape \uXXXX,
+    chạy TRƯỚC bước strip) → "từ vựng" ≡ "tu_vung" ≡ "tuvung"; thêm alias
+    `phienam` (phiên âm), `tiengviet/tienganh` (ngôn ngữ).
+  - `_normAliases`: alias map đã normalize key → `example_simple`/
+    `example_complex` map ĐÚNG.
+  - `alignRow(parts, fields)`: hàng ≤ cột → 1-1 + xử lý hàng thiếu cột
+    (thiếu IPA → các cột sau trượt trái khi ô cuối giống mã ngôn ngữ;
+    ô cuối là mã ngôn ngữ bị đẩy vào cột text → chuyển về cột language);
+    hàng > cột → **căn neo**: word = ô đầu, language = ô cuối,
+    ipa = ô `/.../` đầu tiên; ô trước ipa gộp vào meaning (", ");
+    ô sau ipa chia vào topic/example/exampleSimple/exampleComplex —
+    cột HẤP THỤ ô dư được CHỌN THÔNG MINH (cột nào khiến ít cột tự do
+    nào đó bị "cụt" thành ô 1 từ nhất — phẩy ở example_simple không bị
+    đổ nhầm sang example).
+  - Header lạ (không đủ mỏ neo) → giữ hành vi vị trí cũ (best-effort).
+  - `splitCsvLine` giữ nguyên (đã hiểu nháy kép + escape `""`).
+- **Test:** `test/word_import_parser_test.dart` — 15 test phủ: header
+  8 cột (EN + VN), hàng chuẩn, nháy kép, phẩy không nháy (meaning/
+  example/example_simple/cả hai), thiếu ipa (7-8 ô), thiếu cột cuối,
+  tab/semicolon, hàng 2 ô, ipa trống, không-gộp-lầm.
+- **Lịch sử:**
+  - 2026-09-05 | created→done | agent arena/01a0251e-in4up | WordTableParser
+    + 15 test; chờ CI (flutter test chạy trong pipeline)
+
+### CABIN-001 — Cabin dịch: không khởi động được mic / nhận diện giọng nói
+- **Trạng thái:** done + CI xanh 33961600553 @ a1a36e5 (chờ nghiệm thu máy)
+- **Triệu chứng (owner):** vào tool Dịch Live Cabin → bấm mic → banner
+  "Không thể khởi động micro / nhận diện giọng nói."
+- **Định vị (code + source plugin speech_to_text 7.x — SpeechToTextPlugin.kt):**
+  Lỗi này = `SttServiceFacade.startListening()` trả FALSE. Native plugin
+  trả false khi (a) phiên nghe CŨ CÒN TREO (`isListening` bên native) hoặc
+  (b) `initialize()` fail — máy Android 12+ KHÔNG có dịch vụ Speech
+  Recognition (`isRecognitionAvailable` && `isOnDeviceRecognitionAvailable`
+  đều false) hoặc (c) thiếu quyền mic (cabin đã tự xin quyền trước).
+  **Nghi chính đã xác nhận có bug thật:** nút "Shadowing" tab Nghe gọi
+  `startListening()` fire-and-forget (stateless, không bao giờ stop, và
+  `context.read<SttServiceFacade>()` vốn crash vì facade không register
+  làm Provider) → mic native chạy treo (tối đa 2 phút) → cabin bấm mic
+  bị plugin từ chối.
+  Lỗi tiềm ẩn thêm (kể cả khi start thành công): `listenFor` mặc định
+  **2 phút** → mic tự chết im lặng giữa phiên; `ListenMode.confirmation`
+  (dành cho lệnh ngắn) sai cho hội thoại; lỗi session bị swallow.
+- **Fix:**
+  - `stt_engine_native.dart`: SELF-HEAL (cancel session cũ trước khi
+    start thay vì return true giả) + `lastError` chẩn đoán (init/listen/
+    session) + `listenMode` parameter + `listenFor` nullable (bỏ cap 2
+    phút). (Lỗi CI lần 1: `e.errorType` không tồn tại trong
+    SpeechRecognitionError 7.x — chỉ có `errorMsg` + `permanent`.)
+  - `stt_service_facade.dart`: `startListening` forward listenFor/
+    pauseFor/listenMode; + `startConversation()` (dictation + không cap)
+    cho cabin/shadowing; + `isLiveListening` / `liveLastError` /
+    `checkLiveMicPermission()`.
+  - `stts_cabin_service.dart`: pre-start `stopListening()` dọn session
+    treo; fail → stop + RETRY 1 lần; **keep-alive** 4s (session chết mà
+    cabin vẫn "đang nghe" → tự restart im lặng; fail 3 lần liên tiếp →
+    lỗi); message lỗi HÀNH ĐỘNG ĐƯỢC (thiếu quyền → dẫn Settings; không
+    có speech service → dẫn kiểm tra Google/Samsung Speech Services + ghi
+    chú Whisper offline chưa hỗ trợ mic live); race-guard khi user bấm
+    mic đúng lúc keep-alive đang restart.
+  - `listen_mode_screen.dart`: nút Shadowing thành TOGGLE ("Dừng mic") +
+    `startConversation()` + sửa `context.read` → singleton (chặn crash +
+    chặn mic treo chiếm cabin).
+- **Quá trình debug:** log CI không đọc được → bisect bằng CI oracle
+  (~15 run xanh/đỏ) cô lập đúng khu vực lỗi; lần cuối: closure 0-arg
+  cho `Timer.periodic` (khác convention 1-arg `(_)` của toàn repo) —
+  đã đổi sang `(_)` theo convention — CI xanh xác nhận (33961600553).
+- **Chưa làm (WP2 theo PLAN-008):** live STT offline bằng sherpa
+  Zipformer streaming (không phụ thuộc speech service hệ thống) —
+  `SherpaSttEngine.startListening` hiện là PoC chưa nối mic.
+- **Nghiệm thu máy:** (1) tab Nghe: bấm Shadowing → mic chạy → bấm
+  "Dừng mic" → dừng thật; (2) Cabin bấm mic → nghe+dịch liên tục (không
+  chết sau 2 phút, tự sống lại sau im lặng); (3) nếu vẫn lỗi → banner
+  mới chỉ đúng nguyên nhân (quyền vs speech service).
+- **Lịch sử:**
+  - 2026-09-05 | created→doing | agent arena/01a0251e-in4up | chẩn đoán
+    qua source plugin + fix 4 file; CI bisect cô lập lỗi; chờ CI xanh
+    cuối + nghiệm thu
+
+### SHERPA-WP4-01 — Live STT offline qua sherpa Zipformer (WP4)
+- **Trạng thái:** ✅ done (chờ CI + nghiệm thu máy)
+- **Nguồn:** owner (2026-09-05) — tiếp nối CABIN-001: cabin chạy bằng
+  speech service hệ thống → máy không có Google/Speech Services thì
+  không khởi động được mic; WP4 cho cabin live STT OFFLINE qua
+  sherpa-onnx Zipformer.
+- **Tài liệu bàn giao (BẮT BUỘC đọc):**
+  `docs/Bangiao/bangiao_sherpa_wp4_live_stt.md` — nhiệm vụ N1-N4,
+  thực tế model ĐÃ VERIFY từ docs k2-fsa (2026-09-05), kiến trúc
+  endpointing chốt (VI=simulated streaming + VAD; EN=streaming thật),
+  bẫy không lặp lại (từ CABIN-001/WP3), AT thiết bị 7 bước, format
+  báo cáo "WP DONE".
+- **Model (đã verify URL + layout + size từ docs chính thức):**
+  - VI (ưu tiên): `sherpa-onnx-zipformer-vi-30M-int8-2026-02-09`
+    (~32MB int8, 6000h VI, RTF ~0.011) — simulated streaming +
+    Silero VAD (đã có trong app).
+  - EN: `csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17`
+    (int8, streaming thật token-by-token) — endpoint rules tune.
+  - KHÔNG có Zipformer streaming-thật tiếng Việt (verify từ docs).
+- **Mở nhánh:** branch MỚI từ tip DEV; prompt topic = trỏ file bàn
+  giao + PLAN-023; sau khi CI xanh + nghiệm thu → leader DEV
+  cherry-pick `-x` harvest.
+- **Lịch sử:**
+  - 2026-09-05 | created | agent arena/01a0251e-in4up (leader DEV) —
+    prompt bàn giao + PLAN-023; chờ owner mở nhánh sherpa
+
+### STT-LRC-LANG-01 — Tạo lời (LRC) bằng Whisper: đa ngữ, hết hardcode 'en'
+- **Trạng thái:** ✅ done + CI xanh run 33977299465 (chờ nghiệm thu máy)
+- **Nguồn:** owner (2026-09-05): "Đảm bảo với file âm thanh khả năng tạo lời
+  bằng AI có thể dùng cho đa ngữ chứ không riêng tiếng Anh."
+- **Root cause:** `PlayerSttMixin.generateLrcForCurrentAudio` HARDCODE
+  `language: 'en'` ở cả 3 đường transcribe (VAD pipeline >5MB,
+  transcribeAuto khi AUTO, transcribeFile khi chọn model) → file tiếng
+  Việt/Bất kỳ ngôn ngữ nào khác bị ép transcribe bằng tiếng Anh → lời
+  thoại sai. UI `_LrcModelSelector` chỉ chọn model + grouping, không
+  có chọn ngôn ngữ.
+- **Fix:**
+  - `player_stt_mixin.dart`: `generateLrcForCurrentAudio({..., String
+    language = 'auto'})` + 3 call sites nhận `language`;
+    `generateLrcWithVadPipeline` default 'vi' → 'auto'.
+  - `generate_lrc_actions.dart`: `confirmAndGenerateLrc(..., {String
+    language = 'auto'})` chuyển xuống mixin.
+  - `listen_mode_screen.dart`: `_LrcModelSelector` thêm hàng chip ngôn
+    ngữ (14 mã: auto/vi/en/zh/ja/ko/th/es/fr/de/ru/id/hi/pi), mặc định
+    'Tự động'; `onGenerate(level, grouping, language)`; nút LRC hiện
+    ngôn ngữ đang chọn.
+  - 'auto' đã verify hoạt động trên CẢ 3 đường Whisper: plugin
+    whisper_flutter_new (C++: `params.language = "auto"` qua
+    whisper_lang_id, default của plugin cũng là "auto"), FFI desktop
+    (whisper.cpp xử lý "auto" = auto-detect), CLI (`-l auto`).
+  - Cache key đã gồm language (mỗi ngôn ngữ 1 cache — không trộn).
+- **AT nghiệm thu máy:** (1) file tiếng Việt + chip "Tự động" → lời
+  tiếng Việt đúng; (2) file tiếng Anh + "Tự động" → lời Anh đúng;
+  (3) ép chip "Tiếng Việt" cho file Việt → đúng; (4) file dài >5MB
+  (đường VAD pipeline) + "Tự động" → đúng ngôn ngữ; (5) "Tạo lại" sau
+  khi đổi ngôn ngữ → LRC mới theo ngôn ngữ mới.
+- **Lịch sử:**
+  - 2026-09-05 | created→doing | agent arena/01a0251e-in4up | fix 3 file
+    (mixin + generate_lrc_actions + listen_mode_screen); chờ CI +
+    nghiệm thu
+  - 2026-09-05 | proposed→done | agent arena/01a0692a-in4up | hoàn thành N1-N4 (SherpaSttEngine simulated streaming VI + streaming EN, SherpaModelManager 2 Zipformer profiles, UI Quản lý Model AI, Cabin engine toggle, priority i18n, test unit).

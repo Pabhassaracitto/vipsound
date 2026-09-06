@@ -12,6 +12,7 @@ import 'dart:ui';
 
 import 'package:in4up/core/language/localized_material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:in4up_stt/models/stt_config.dart';
 import 'package:in4up_stt/models/stt_model_info.dart';
 import 'package:in4up_stt/stt_service_facade.dart';
@@ -757,9 +758,27 @@ class _ListenModeScreenState extends State<ListenModeScreen>
 
   Future<void> _startVoiceCommands() async {
     if (_voiceListening) return;
+    final locale = context.read<LocaleProvider>().locale?.languageCode ?? 'vi';
+
+    try {
+      final status = await Permission.microphone.status;
+      if (!status.isGranted) {
+        final result = await Permission.microphone.request();
+        if (!result.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(voiceCommandLabel(locale, 'permissionDenied'))),
+            );
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ VoiceCommands mic permission check exception: $e');
+    }
+
     setState(() => _voiceListening = true);
     final player = context.read<PlayerProvider>();
-    final locale = context.read<LocaleProvider>().locale?.languageCode ?? 'vi';
     final sttLang = locale == 'vi' ? 'vi-VN' : 'en-US';
 
     final started = await _voiceCommandService.start(
@@ -2870,19 +2889,52 @@ class GenerateLrcButton extends StatelessWidget {
                   isProcessing: isActive || provider.isGeneratingLrc,
                   // REOPEN FIX: đã có LRC lưu sẵn → hỏi Dùng bản đã lưu /
                   // Tạo lại, không auto chạy Whisper nữa.
-                  onGenerate: (level, grouping) =>
-                      confirmAndGenerateLrc(context, provider, level, grouping),
+                  // Ngôn ngữ: 'auto' (mặc định) = Whisper tự nhận diện
+                  // đa ngữ; hoặc ép cụ thể (vi/en/zh/ja/ko/pi...).
+                  onGenerate: (level, grouping, language) =>
+                      confirmAndGenerateLrc(
+                        context,
+                        provider,
+                        level,
+                        grouping,
+                        language: language,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          context.read<SttServiceFacade>().startListening(),
-                      icon: const Icon(Icons.mic),
-                      label: const Text('Shadowing'),
+                    // Shadowing mic — TOGGLE. Trước đây chỉ startListening()
+                    // fire-and-forget: mic native chạy treo → CABIN/flow
+                    // khác bấm mic bị plugin từ chối ("Không thể khởi động
+                    // micro"). Giờ: đang nghe → bấm = dừng; + dùng chế độ
+                    // hội thoại (không tự chết sau 2 phút).
+                    // SttServiceFacade là SINGLETON (factory) — không
+                    // register làm Provider, nên KHÔNG dùng context.read
+                    // (gặp thì crash ProviderNotFoundException).
+                    AnimatedBuilder(
+                      animation: SttServiceFacade(),
+                      builder: (context, _) {
+                        final facade = SttServiceFacade();
+                        final micOn = facade.isLiveListening;
+                        return ElevatedButton.icon(
+                          onPressed: () async {
+                            if (micOn) {
+                              await facade.stopListening();
+                            } else {
+                              await facade.startConversation();
+                            }
+                          },
+                          icon: Icon(micOn ? Icons.stop_circle : Icons.mic),
+                          label: Text(micOn ? 'Dừng mic' : 'Shadowing'),
+                          style: micOn
+                              ? ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  )
+                              : null,
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -2897,8 +2949,9 @@ class GenerateLrcButton extends StatelessWidget {
 
 class _LrcModelSelector extends StatefulWidget {
   final bool isProcessing;
+  /// (level, grouping, language) — 'auto' = Whisper tự nhận diện ngôn ngữ.
   final Future<SttTranscribeOutput?> Function(
-      WhisperModelLevel?, SttSegmentGrouping) onGenerate;
+      WhisperModelLevel?, SttSegmentGrouping, String) onGenerate;
 
   const _LrcModelSelector(
       {required this.isProcessing, required this.onGenerate});
@@ -2907,9 +2960,29 @@ class _LrcModelSelector extends StatefulWidget {
   State<_LrcModelSelector> createState() => _LrcModelSelectorState();
 }
 
+/// Ngôn ngữ Whisper hỗ trợ cho tạo LRC — 'auto' = tự nhận diện (đa ngữ).
+/// (Whisper multilingual: mọi model tiny/base/... đều hiểu cả danh sách này.)
+const Map<String, String> _lrcSttLanguages = {
+  'auto': 'Tự động',
+  'vi': 'Tiếng Việt',
+  'en': 'English',
+  'zh': 'Tiếng Trung',
+  'ja': 'Tiếng Nhật',
+  'ko': 'Tiếng Hàn',
+  'th': 'Tiếng Thái',
+  'es': 'Tiếng Tây Ban Nha',
+  'fr': 'Tiếng Pháp',
+  'de': 'Tiếng Đức',
+  'ru': 'Tiếng Nga',
+  'id': 'Tiếng Indonesia',
+  'hi': 'Tiếng Hindi',
+  'pi': 'Pali',
+};
+
 class _LrcModelSelectorState extends State<_LrcModelSelector> {
   WhisperModelLevel? _selectedLevel;
   SttSegmentGrouping _grouping = SttSegmentGrouping.sentence;
+  String _language = 'auto';
 
   @override
   Widget build(BuildContext context) {
@@ -2939,6 +3012,18 @@ class _LrcModelSelectorState extends State<_LrcModelSelector> {
                       () => _selectedLevel = isSelected ? null : level),
             );
           }),
+        ]),
+        const SizedBox(height: 8),
+        // Ngôn ngữ STT — mặc định 'Tự động' (Whisper tự nhận diện đa ngữ).
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final entry in _lrcSttLanguages.entries)
+            ChoiceChip(
+              label: Text(entry.value),
+              selected: _language == entry.key,
+              onSelected: widget.isProcessing
+                  ? null
+                  : (_) => setState(() => _language = entry.key),
+            ),
         ]),
         const SizedBox(height: 12),
         if (!widget.isProcessing)
@@ -2988,9 +3073,14 @@ class _LrcModelSelectorState extends State<_LrcModelSelector> {
           )
         else
           ElevatedButton.icon(
-            onPressed: () => widget.onGenerate(_selectedLevel, _grouping),
+            onPressed: () =>
+                widget.onGenerate(_selectedLevel, _grouping, _language),
             icon: const Icon(Icons.subtitles_outlined),
-            label: const Text('Tạo lời thoại (LRC)'),
+            label: Text(
+              _language == 'auto'
+                  ? 'Tạo lời thoại (LRC — ngôn ngữ tự động)'
+                  : 'Tạo lời thoại (LRC — ${_lrcSttLanguages[_language]})',
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade700,
               padding:

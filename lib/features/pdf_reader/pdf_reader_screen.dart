@@ -325,33 +325,46 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
   }
 
   void _applyShortcut(PdfReaderShortcut action) {
+    // Switch EXPRESSION (không phải statement): khỏi phải lo case cuối "completes
+    // normally" và khỏi break thừa — enum đã đủ exhaustive.
     switch (action) {
       case PdfReaderShortcut.nextPage:
         _goToPage(_controller.currentPage + 1);
+        break;
       case PdfReaderShortcut.previousPage:
         _goToPage(_controller.currentPage - 1);
+        break;
       case PdfReaderShortcut.firstPage:
         _goToPage(0);
+        break;
       case PdfReaderShortcut.lastPage:
         _goToPage(_controller.totalPages - 1);
+        break;
       case PdfReaderShortcut.toggleChrome:
         _toggleChromeVisibility();
+        break;
       case PdfReaderShortcut.openSearch:
         if (!_searchOpen) _toggleSearch();
+        break;
       case PdfReaderShortcut.openToc:
         _openTocNavigator();
+        break;
       case PdfReaderShortcut.toggleBookmark:
         unawaited(_controller.toggleBookmark());
+        break;
       case PdfReaderShortcut.zoomIn:
         _zoom(byUp: true);
+        break;
       case PdfReaderShortcut.zoomOut:
         _zoom(byUp: false);
+        break;
       case PdfReaderShortcut.closeSearchOrScreen:
         if (_searchOpen) {
           _closeSearch();
         } else {
           Navigator.of(context).maybePop();
         }
+        break;
     }
   }
 

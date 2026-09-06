@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Nguyên tắc Context-Accumulation: nhiều context = từ quan trọng hơn.
 class VocabContext {
   final String id;
-  final String sourceType; // 'pdf', 'web', 'youtube', 'manual', 'clipboard', 'story'
+  final String sourceType; // 'pdf', 'web', 'youtube', 'tipitaka', 'manual', 'clipboard', 'story'
   final String? sourceName; // "ML_101.pdf", "https://...", "YouTube: TED Talk"
   final String? pageOrPosition; // "trang 42", "02:15", "dòng 3"
   final String? sourceRef; // reopenable ref: path / url / cloud id if available
@@ -81,6 +81,8 @@ class VocabContext {
         return '📋';
       case 'story':
         return '📖';
+      case 'tipitaka':
+        return '📜';
       default:
         return '✏️';
     }

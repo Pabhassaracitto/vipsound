@@ -10,6 +10,7 @@ import '../features/translation/glossary/glossary_store.dart';
 import '../models/vocab_context.dart';
 import '../models/vocabulary_type.dart';
 import '../models/word_entry.dart';
+import '../models/tipitaka_source_anchor.dart';
 import '../services/vocab_classifier.dart';
 import '../services/vocab_sync_service.dart';
 
@@ -604,6 +605,23 @@ class VocabularyProvider extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       debugPrint('addContextToWord: word $wordId not found');
+    }
+  }
+
+  /// Adds a durable Tipiṭaka anchor without creating a second vocabulary
+  /// entry when the selected word already exists.
+  void addTipitakaContextToWord(
+    String wordId,
+    TipitakaSourceAnchor anchor,
+    TipitakaContextSnapshot snapshot,
+  ) {
+    try {
+      final w = _words.firstWhere((w) => w.id == wordId);
+      w.addTipitakaContext(anchor, snapshot);
+      _saveWord(w);
+      notifyListeners();
+    } catch (_) {
+      debugPrint('addTipitakaContextToWord: word $wordId not found');
     }
   }
 

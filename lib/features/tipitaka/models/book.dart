@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 class TipitakaBook extends Equatable {
@@ -32,6 +34,95 @@ class TipitakaBook extends Equatable {
         metadataJson: m['metadata_json'] ?? m['metadataJson'],
       );
 
+  TipitakaBookIndex get catalogIndex => TipitakaBookIndex.fromBook(this);
+
   @override
-  List<Object?> get props => [id, collectionId, code, namePali, nameEn, nameVi, orderIndex];
+  List<Object?> get props => [
+        id,
+        collectionId,
+        code,
+        namePali,
+        nameEn,
+        nameVi,
+        orderIndex,
+      ];
+}
+
+/// Stable catalogue labels for Pa-Auk identifiers such as
+/// `abh01a_att`, `ABH01A_ATT`, and `vin01m_mul`.
+class TipitakaBookIndex {
+  final String canonicalCode;
+  final String editionCode;
+  final String normalizedCode;
+  final String sourceTable;
+
+  const TipitakaBookIndex({
+    required this.canonicalCode,
+    required this.editionCode,
+    required this.normalizedCode,
+    required this.sourceTable,
+  });
+
+  factory TipitakaBookIndex.fromBook(TipitakaBook book) {
+    final normalized = book.code
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[\s-]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceFirst(RegExp(r'^_'), '')
+        .replaceFirst(RegExp(r'_$'), '');
+    String? metadataSource;
+    final metadata = book.metadataJson?.trim();
+    if (metadata != null && metadata.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(metadata);
+        if (decoded is Map) {
+          final value = decoded['source_table'];
+          if (value is String && value.trim().isNotEmpty) {
+            metadataSource = value.trim();
+          }
+        }
+      } on FormatException {
+        // Legacy rows can contain non-JSON metadata; use the code fallback.
+      }
+    }
+    final source = metadataSource ??
+        (book.namePali.trim().isEmpty
+            ? normalized.toLowerCase()
+            : book.namePali.trim());
+    final match = RegExp(r'^([A-Z]{2,6}\d{1,3}[MAT])(?:_?([A-Z]+))?$')
+        .firstMatch(normalized);
+    if (match != null) {
+      return TipitakaBookIndex(
+        canonicalCode: match.group(1)!,
+        editionCode: match.group(2) ?? '',
+        normalizedCode: normalized,
+        sourceTable: source,
+      );
+    }
+    final parts = normalized.split(RegExp(r'[_\s-]+'));
+    return TipitakaBookIndex(
+      canonicalCode: parts.first,
+      editionCode: parts.length > 1 ? parts.sublist(1).join('_') : '',
+      normalizedCode: normalized,
+      sourceTable: source,
+    );
+  }
+
+  String get editionLabel {
+    switch (editionCode) {
+      case 'MUL':
+        return 'Mūla';
+      case 'ATT':
+        return 'Aṭṭhakathā';
+      case 'TIK':
+        return 'Ṭīkā';
+      default:
+        return editionCode;
+    }
+  }
+
+  String get compactLabel => editionCode.isEmpty
+      ? canonicalCode
+      : '$canonicalCode · $editionCode';
 }

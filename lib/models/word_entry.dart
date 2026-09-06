@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:in4up_core/vocab_level_difficulty.dart';
 
 import 'vocabulary_type.dart';
 import 'vocab_context.dart';
+import 'tipitaka_source_anchor.dart';
 
 // Task 2 / ADR-0001: SkillReviewData tách file riêng, chỉ phụ thuộc
 // hàm SM-2 DUY NHẤT. Re-export để mọi nơi import word_entry vẫn dùng được.
@@ -137,6 +140,12 @@ class WordEntry {
   // ── ★ MỚI: Hierarchical fields ──
   VocabularyType vocabType;
   List<VocabContext> contexts;
+
+  /// Structured Tipiṭaka pointers. Kept separately from generic contexts so
+  /// resolver keys and selection offsets survive serialization unchanged.
+  List<TipitakaSourceAnchor> tipitakaAnchors;
+  List<TipitakaContextSnapshot> tipitakaContexts;
+
   List<String> parentIds;
   List<String> childIds;
   String? personalNotes;
@@ -232,6 +241,8 @@ class WordEntry {
     DateTime? updatedAt,
     VocabularyType? vocabType,
     List<VocabContext>? contexts,
+    List<TipitakaSourceAnchor>? tipitakaAnchors,
+    List<TipitakaContextSnapshot>? tipitakaContexts,
     List<String>? parentIds,
     List<String>? childIds,
     this.personalNotes,
@@ -250,6 +261,8 @@ class WordEntry {
         updatedAt = updatedAt ?? createdAt ?? DateTime.now(),
         vocabType = vocabType ?? VocabularyType.word,
         contexts = contexts ?? [],
+        tipitakaAnchors = tipitakaAnchors ?? [],
+        tipitakaContexts = tipitakaContexts ?? [],
         parentIds = parentIds ?? [],
         childIds = childIds ?? [],
         language = language,
@@ -389,6 +402,12 @@ class WordEntry {
       .map((c) => c.sourceName!)
       .toSet();
 
+  TipitakaSourceAnchor? get latestTipitakaAnchor =>
+      tipitakaAnchors.isEmpty ? null : tipitakaAnchors.last;
+
+  TipitakaContextSnapshot? get latestTipitakaContext =>
+      tipitakaContexts.isEmpty ? null : tipitakaContexts.last;
+
   VocabContext? get latestContext {
     if (contexts.isEmpty) return null;
     final sorted = List<VocabContext>.from(contexts)
@@ -405,6 +424,31 @@ class WordEntry {
     }
 
     contexts.add(ctx);
+    updatedAt = DateTime.now();
+  }
+
+  void addTipitakaContext(
+    TipitakaSourceAnchor anchor,
+    TipitakaContextSnapshot snapshot,
+  ) {
+    final anchorIndex = tipitakaAnchors.indexWhere(
+      (item) => item.stableKey == anchor.stableKey,
+    );
+    if (anchorIndex >= 0) {
+      tipitakaAnchors[anchorIndex] = anchor;
+    } else {
+      tipitakaAnchors.add(anchor);
+    }
+
+    final snapshotIndex = tipitakaContexts.indexWhere(
+      (item) => item.paliText == snapshot.paliText &&
+          item.paragraphNo == snapshot.paragraphNo,
+    );
+    if (snapshotIndex >= 0) {
+      tipitakaContexts[snapshotIndex] = snapshot;
+    } else {
+      tipitakaContexts.add(snapshot);
+    }
     updatedAt = DateTime.now();
   }
 
@@ -566,6 +610,12 @@ class WordEntry {
         'updatedAt': updatedAt.toIso8601String(),
         'vocabType': vocabType.name,
         'contexts': contexts.map((c) => c.toJson()).toList(),
+        'tipitakaAnchors': tipitakaAnchors.map((a) => a.toJson()).toList(),
+        'tipitakaContexts': tipitakaContexts.map((c) => c.toJson()).toList(),
+        // Alias kept explicit for the phase-1 data contract documentation.
+        'sourceAnchorJson': jsonEncode(
+          tipitakaAnchors.map((a) => a.toJson()).toList(),
+        ),
         'parentIds': parentIds,
         'childIds': childIds,
         'personalNotes': personalNotes,
@@ -590,6 +640,14 @@ class WordEntry {
     return list;
   }
 
+  static dynamic _decodeJsonList(String raw) {
+    try {
+      return jsonDecode(raw);
+    } catch (_) {
+      return const <dynamic>[];
+    }
+  }
+
   factory WordEntry.fromJson(Map<String, dynamic> json) {
     // Parse vocabType
     VocabularyType type = VocabularyType.word;
@@ -611,6 +669,27 @@ class WordEntry {
     final language = json['language'] as String? ?? 'en';
     final topics = _parseStringList(json['topics'], fallback: json['topic']?.toString() ?? '');
     final languages = _parseStringList(json['languages'], fallback: language);
+    final rawAnchorValue = json['tipitakaAnchors'] ?? json['sourceAnchorJson'];
+    final rawAnchors = rawAnchorValue is String
+        ? _decodeJsonList(rawAnchorValue)
+        : rawAnchorValue;
+    final tipitakaAnchors = rawAnchors is List
+        ? rawAnchors
+            .whereType<Map>()
+            .map((value) => TipitakaSourceAnchor.fromJson(
+                  Map<String, dynamic>.from(value),
+                ))
+            .toList()
+        : <TipitakaSourceAnchor>[];
+    final rawSnapshots = json['tipitakaContexts'];
+    final tipitakaContexts = rawSnapshots is List
+        ? rawSnapshots
+            .whereType<Map>()
+            .map((value) => TipitakaContextSnapshot.fromJson(
+                  Map<String, dynamic>.from(value),
+                ))
+            .toList()
+        : <TipitakaContextSnapshot>[];
 
     // Backward compatibility: old format without understandData
     if (json.containsKey('understand') && !json.containsKey('understandData')) {
@@ -636,6 +715,8 @@ class WordEntry {
             : null,
         vocabType: type,
         contexts: contexts,
+        tipitakaAnchors: tipitakaAnchors,
+        tipitakaContexts: tipitakaContexts,
         parentIds: (json['parentIds'] as List?)?.cast<String>() ?? [],
         childIds: (json['childIds'] as List?)?.cast<String>() ?? [],
         personalNotes: json['personalNotes'] as String?,
@@ -677,6 +758,8 @@ class WordEntry {
           : null,
       vocabType: type,
       contexts: contexts,
+      tipitakaAnchors: tipitakaAnchors,
+      tipitakaContexts: tipitakaContexts,
       parentIds: (json['parentIds'] as List?)?.cast<String>() ?? [],
       childIds: (json['childIds'] as List?)?.cast<String>() ?? [],
       personalNotes: json['personalNotes'] as String?,
@@ -722,6 +805,8 @@ class WordEntry {
         createdAt: createdAt,
         vocabType: vocabType ?? this.vocabType,
         contexts: contexts,
+        tipitakaAnchors: tipitakaAnchors,
+        tipitakaContexts: tipitakaContexts,
         parentIds: parentIds,
         childIds: childIds,
         personalNotes: personalNotes ?? this.personalNotes,

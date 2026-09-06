@@ -27,6 +27,7 @@
 | READ-630-03 | Marker "từ đã lưu": tắt mặc định, bật khi cần + legend | ✅ done | toggle toolbar PDF+Web (chờ nghiệm thu build) |
 | READ-630-04 | Lưu hàng loạt thông minh (từ/cụm/câu → topic + language) PDF + Web | ✅ done | extractor dùng chung + language (chờ nghiệm thu) |
 | PDF-W0 | Wave 0 PDF Reader: nối selection + TTS câu + định danh file + hệ toạ độ + i18n + test sàn | 🔨 doing | code + CI 🟢 05-09-2026 (`370ff91`, run 33984585516: analyze 0 error + test rule #5 xanh) trên `arena/01a07250-in4up`; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` ở máy dev |
+| PDF-W1 | Wave 1 PDF Reader (đợt A): mục lục + tìm trong file + thumbnail + nhảy trang | 🔨 doing | code + CI 🟢 05-09-2026 (`c4f62c5`, run 34011472325) trên `arena/01a07250-in4up`; ADR-0004; CÒN nghiệm thu thiết bị + 1.4/1.5/1.7/1.8/1.9 chưa làm |
 | READ-630-05 | Nhận diện text ĐÃ LƯU khi lưu nhiều text + gợi ý hành động (thêm ngữ cảnh/cập nhật/bỏ qua) | 📋 proposed | nền: badge đã-có + smart-fill đã có (PLAN-015) |
 | LISTEN-630-01 | Tab Nghe: AB loop bottom overflow 24px + nút "lặp câu tiếp theo" | ✅ done | LRC budget + onPanelChanged (chờ nghiệm thu) |
 | LISTEN-823-01 | Tab Nghe: rèm LRC + AI sheet + dịch Hiểu + transcript đúng audio | ✅ done | 1d05ce9; CI run 32660616256 xanh (chờ QA đổi file nhanh) |
@@ -653,6 +654,48 @@
   WordEntry.contexts để so context mới/trùng. Chi tiết: PLAN-015.
 - **Lịch sử:**
   - 2026-08-23 | created | owner via chat (đề xuất tính năng sắp tới)
+
+### PDF-W1 — Wave 1 PDF Reader đợt A: điều hướng & tìm kiếm (đứng trên API pdfrx)
+- **Trạng thái:** doing — code + CI 🟢, chờ nghiệm thu thiết bị (chưa phải done)
+- **Nguồn:** owner (2026-09-05): "Tiếp tục theo lộ trình bạn cho là hợp lý nhất"
+  sau khi Wave 0 xanh CI. Lộ trình ở `docs/pdf_reader_readera_upgrade.md` mục
+  WAVE 1; đợt A = 1.1 + 1.2 + 1.3 + nhảy trang nhanh (1.4/1.5/1.7/1.8/1.9 để
+  lại vì đổi cảm giác đọc toàn màn hình, cần owner chốt).
+- **Nội dung:**
+  - **1.1 TOC**: `services/pdf_outline_index.dart` (cây `PdfOutlineNode` → danh
+    sách phẳng, `findActiveOutlineIndex`, chốt rõ dest 1-based ↔ controller
+    0-based) + `widgets/pdf_toc_panel.dart`; nhảy bằng `goToDest` để giữ cả vị trí
+    trong trang; file không outline → thông báo thật, không crash; panel tự cuộn
+    tới chương đang đọc MỘT lần khi mở (không đuổi theo từng lượt lật trang).
+  - **1.2 Search**: dùng `PdfTextSearcher` của pdfrx (quét dần từng trang, cache
+    structured text, `searchProgress`, `pageTextMatchPaintCallback` vẽ qua
+    `pagePaintCallbacks`) — KHÔNG tự viết index/isolate ⇒ P0-11 không còn chặn
+    tính năng này (Text Mode vẫn nợ). `services/pdf_search_query.dart`: escape
+    ký tự đặc biệt, space khớp cả `\n`, tuỳ chọn "Không phân biệt dấu" gộp theo
+    họ **1:1** (cố ý không co giãn `aa`↔`â` để offset tô sáng không lệch).
+    `widgets/pdf_search_panel.dart` bám searcher như `Listenable`; cú nhảy bọc
+    try/catch vì layout trang đích có thể chưa sẵn. Searcher tạo ở `onViewerReady`
+    (không phải `onDocumentChanged`) vì ctor nó đọc `controller.document`.
+  - **1.3 Thumbnails**: `widgets/pdf_thumbnail_grid.dart` — `PdfPageView`
+    `maximumDpi: 96` trong `GridView.builder` (tab "Trang" cùng sheet).
+  - **Nhảy trang**: nhãn "37 / 512" trên toolbar thành nút → dialog số + Slider.
+  - Đang mở ô tìm ⇒ chrome không được ẩn (ô nhập liệu).
+  - 13 nhãn mới vào `priority_ui_overrides.dart` (rule #5, không chạy generator).
+  - Test mới: `test/pdf_reader/pdf_outline_index_test.dart`,
+    `test/pdf_reader/pdf_search_query_test.dart`.
+- **Kiến trúc:** ADR-0004 (đứng trên API pdfrx, không nâng `pdfrx ^2.2.24`, không
+  tự xây search index, chính sách gộp dấu 1:1).
+- **Rủi ro còn lại:** `test/pdf_reader/**` (7 file) **chưa chạy lần nào** — CI của
+  workflow này chỉ chạy `test/locale_chrome_no_vietnamese_test.dart`; cần
+  `flutter test test/pdf_reader test/locale_chrome_no_vietnamese_test.dart` ở máy
+  dev. Hành vi touch/paint của `PdfTextSearcher` trên máy yếu + sách 800 trang chưa
+  đo. P0-19 (hai nguồn offset) còn mở: "tìm rồi đọc từ chỗ tìm" phải đợi hợp nhất.
+- **Lịch sử:**
+  - 2026-09-05 | created→doing | agent arena/01a07250-in4up | 3 commit
+    `99540d9` (service+test) → `a4b91dc` (widget) → `c4f62c5` (nối màn đọc + i18n);
+    merge `7219ee4` kéo `arena/01a0251e-in4up` (Sherpa live STT + LRC đa ngữ) vào
+    trước để tránh giẫm nhau — resolve 1 conflict ở `priority_ui_overrides.dart`
+    (hai bên cùng append cuối map; giữ cả hai, 294 key, 0 trùng).
 
 ### PDF-W0 — Wave 0 PDF Reader: sửa cho đúng cái đã có (không thêm tính năng)
 - **Trạng thái:** doing — code xong, CI 🟢 (analyze 0 error + rule #5 test xanh); còn nghiệm thu thiết bị

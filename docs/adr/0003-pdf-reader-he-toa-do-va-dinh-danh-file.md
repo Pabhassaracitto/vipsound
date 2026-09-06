@@ -1,8 +1,10 @@
 # ADR-0003: PDF Reader — hệ toạ độ rect (giữ quy ước PDF y-up) và định danh file làm khoá dữ liệu đọc
 
 - **Ngày:** 2026-09-05
-- **Trạng thái:** ĐÃ TRIỂN KHAI (Wave 0, branch `arena/01a07250-in4up`) — chờ CI
-  + nghiệm thu thiết bị
+- **Trạng thái:** ĐÃ TRIỂN KHAI (Wave 0, branch `arena/01a07250-in4up`) — CI 🟢
+  (`370ff91`, run 33984585516: `flutter analyze` 0 error + test rule #5 xanh); còn
+  nghiệm thu thiết bị. Đợt sau: ADR-0004 (mục lục/tìm kiếm cũng chạy trên quy ước
+  toạ độ này — kết quả search được tô bằng charRects của engine, không qua overlay ta)
 - **Phạm vi:** `lib/features/pdf_reader/**` (services/models/widgets), quy ước dữ
   liệu liên quan tới `VocabContext.rectHint` (Tab Đọc) và `Evidence.locator`
   (module knowledge). Không đổi schema lưu trữ, chỉ đổi CÁCH ĐỌC dữ liệu đó.

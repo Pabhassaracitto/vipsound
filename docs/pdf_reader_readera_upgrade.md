@@ -3,7 +3,8 @@
 > Bản thảo luận (chưa phải kế hoạch đã chốt). Mọi nhận định đều kèm `file:dòng`
 > để kiểm chứng. Ngày phân tích: 05-09-2026, branch `arena/01a07250-in4up`.
 >
-> **CẬP NHẬT 05-09-2026 — WAVE 0 ĐÃ CODE XONG VÀ CI 🟢** (mục 4.0). P0-1…P0-4,
+> **CẬP NHẬT 05-09-2026 — WAVE 0 + WAVE 1 (đợt A: mục lục/tìm kiếm/thumbnail) ĐÃ CODE, CI 🟢**
+> (mục 4.0 và 4.1). P0-1…P0-4,
 > P0-6…P0-18 được xử lý ở tầng mã; P0-5 có migration; P0-11/12 còn mở (xem 4.0.3).
 > Máy dev không có Flutter SDK ⇒ nghiệm thu static dựa vào CI: workflow
 > `App analyze (wide oracle)` chạy `flutter analyze` (chỉ ERROR mới fatal) +
@@ -237,6 +238,47 @@ thư viện · multi-document · keyboard shortcuts · TTS chạy nền có noti
 | 6 | `pdf_reader_screen.dart:1393` | `duplicate_named_argument`: `ListTile` có `leading:` hai lần (thêm icon bookmark mà quên bỏ ô màu cũ) | Bỏ `leading` đầu |
 
 Còn 1 `info • unnecessary_import` (`dart:ui show Rect` trong controller) cũng được dọn.
+
+
+### 4.1 KẾT QUẢ WAVE 1 — đợt A: điều hướng & tìm kiếm (đã code 05-09-2026, CI 🟢)
+
+| ID | Kế hoạch | Thực tế đã code | Còn nợ |
+|---|---|---|---|
+| 1.1 | TOC drawer đa cấp, nhảy trang, % trong chương | `services/pdf_outline_index.dart` (làm phẳng DFS + `findActiveOutlineIndex` + `describeActiveOutline`) → `widgets/pdf_toc_panel.dart` đọc `PdfDocument.loadOutline()` ngay trong `onViewerReady`; nhảy bằng `PdfViewerController.goToDest(dest)` (dùng đúng destination của PDF, không tự quy đổi); panel tự cuộn tới chương hiện tại **một lần khi mở** | Chưa gập/mở từng nhánh (danh sách thụt lề), chưa có **% tiến độ trong chương**, và **chưa** heuristic "tự sinh mục lục từ font-size" cho file scan/sách không outline — hiện chỉ hiện "Tài liệu này không có mục lục" |
+| 1.2 | Tìm trong tài liệu: input, kết quả theo trang, prev/next, highlight | **Dùng `PdfTextSearcher` có sẵn của pdfrx 2.2.24** thay vì tự viết index: nó quét **dần theo từng trang** (không chặn UI — tức P0-11 không còn là điều kiện của tính năng này), cache `loadStructuredText`, có `searchProgress`, và `pageTextMatchPaintCallback` vẽ tô sáng qua `PdfViewerParams.pagePaintCallbacks` (không cần overlay riêng). `widgets/pdf_search_panel.dart` bám searcher như `Listenable` nên kết quả lớn dần khi quét. Chính sách tìm tiếng Việt ở `services/pdf_search_query.dart` | Chưa có **lịch sử tìm kiếm**; chưa "match entire word"; chưa thay thế (không cần cho reader) |
+| 1.3 | Thumbnail strip/grid `PdfPageView` | `widgets/pdf_thumbnail_grid.dart` trong tab "Trang" của cùng một sheet, `maximumDpi: 96`, `GridView.builder` dựng lười, viền sáng theo trang hiện tại, chạm = `goToPage` | Chưa "vuốt từ cạnh dưới"; chưa `RepaintBoundary` (pdfrx đã dựng ảnh theo ô, nhưng thêm sẽ tốt hơn cho máy yếu) |
+| — | Nhảy nhanh tới trang | Nhãn "37 / 512" trên toolbar thành nút → dialog TextField số + Slider (`_showJumpToPageDialog`) | Chưa "đi tới %"/dòng nhập "12.5%" |
+| 1.6 | Bookmark thật | Đã xong từ Wave 0 (`AnnotationType.bookmark` + ★ + reopen) | — |
+
+**Quyết định kiến trúc** (chi tiết ở `docs/adr/0004-...`): không nâng pdfrx (giữ
+`^2.2.24`, không đụng `pubspec.yaml`/`third_party/pdfium_flutter`); không tự build
+search index; gộp dấu khi tìm theo họ **1:1** để offset khớp với charRects.
+
+**Đã kiểm chứng bằng CI** (`c4f62c5`, run 34011472325): `flutter analyze` 0 error với
+lint BẬT, và `test/locale_chrome_no_vietnamese_test.dart` xanh trên cây **đã merge
+`arena/01a0251e-in4up`** (Sherpa STT live + LRC đa ngữ) — tức hai hướng code không
+giẫm nhau; 13 nhãn mới đăng ký ở `priority_ui_overrides.dart`, test độ phủ i18n của
+feature (`test/pdf_reader/pdf_reader_i18n_coverage_test.dart`) quét cả 3 file widget mới
+vì nó đi thư mục, không hard-code danh sách file.
+
+**Chưa làm ở Wave 1 (có ý):** 1.4 layout/zoom + crop + facing pages, 1.5 theme đọc
+(Day/Night/Sepia/Paper), 1.7 progress line kéo được, 1.8 gesture zones, 1.9 phím tắt
+Windows. Lý do: chúng đổi cảm giác đọc toàn màn hình và nên chốt sau khi owner đi
+qua nghiệm thu thiết bị của đợt A.
+
+**Checklist nghiệm thu thiết bị — đợt A:**
+
+- [ ] Sách có outline: mở nút ★Mục lục → thấy cây, chương đang đọc được sáng, bấm 3
+      mục khác nhau → nhảy đúng trang **và** đúng vùng trong trang (dest `XYZ` có toạ độ).
+- [ ] File không có outline (scan/ truyện tự chế): hiện "Tài liệu này không có mục lục",
+      **không** crash, tab "Trang" vẫn dùng được.
+- [ ] Tìm `thanh` với chip "Không phân biệt dấu" BẬT → khớp cả "thành/thanh"; TẮT →
+      chỉ khớp đúng dấu. Tìm `a.b` → không được khớp "axb" (escape).
+- [ ] Tìm trong file 300+ trang: UI vẫn cuộn được trong khi % tăng; kết quả tô sáng
+      trên trang; prev/next nhảy giữa các khớp; đóng ô tìm → sạch tô sáng.
+- [ ] Thu nhỏ: lướt grid 300 trang không khựng > 1 frame mỗi ô; bấm ô → tới trang đó.
+- [ ] Nhãn trang → dialog số + slider → tới trang 187 trong 1 cú.
+- [ ] Locale `en`/`hi`: chrome của panel tìm/mục lục không còn chữ Việt.
 
 
 ### WAVE 0 — "Sửa cho đúng cái đã có" (2–3 ngày dev) — **P0**

@@ -350,6 +350,72 @@ cho `Text Mode` (chỉ màn đọc PDF); (d) 1.4 vẫn chờ quyết định nâ
 chờ owner chốt sau nghiệm thu.
 
 
+### 4.3 KẾT QUẢ WAVE 2 — đợt C: xuất/nhập dữ liệu (mục 2.6, bậc B1+B2) — đã code 06-09-2026, CI 🟢
+
+Owner chốt phân bậc: **B1 = xuất JSON/XFDF sidecar**, **B2 = "in bản chụp"
+(render → PDF-ảnh qua share sheet)**; chỉ khi nào cần **text vector** mới phải thêm
+package `pdf`. Vì vậy đợt này **không thêm dependency nào** — đối chiếu pubspec rồi
+mới kết luận: `share_plus ^12.0.2` (lần đầu app dùng), `file_picker ^11.0.2`,
+`path_provider ^2.1.4` đã có sẵn; `pdfrx_engine` trả `PdfImage.pixels` = **BGRA8888
+thô** nên burn + viết PDF làm thuần Dart được.
+
+| Bậc | Đã code | Cơ chế thật |
+|---|---|---|
+| B1a | **Sidecar `.in4up.json`** — tệp chú thích có version, nhập lại được, merge chứ không đè | `services/pdf_annotation_sidecar.dart` (283 dòng): `format: "in4up-pdf-annotations"`, `version: 1`; header mang **định danh file** (`fileName`/`fileSize`/`fileModifiedMs`/`pageCount`/`lastPageIndex`/`exportedAt`/`producer`). `decodePdfAnnotationSidecar` **không bao giờ ném** — dòng hỏng bị bỏ qua, còn lại bao nhiêu nhập bấy nhiêu. `compareSidecarToFile()` trả `sameFile / contentChanged / pageChanged / unknown`; **định danh là size + mtime, tuyệt đối không phải đường dẫn** (đường dẫn đổi là mất hết như lỗ hổng §0.5). `mergeSidecarAnnotations`: `createdAt` mới hơn thắng, hoà thì giữ note dài hơn, sắp lại theo trang. Thêm `PdfReaderController.importAnnotations()` — cấp id `uuid` MỚI cho dòng nhập (không được đụng id của dòng cục bộ), luôn persist + `notifyListeners()` |
+| B1b | **Xuất XFDF** để app PDF khác (Acrobat/Foxit/Xodo) đọc được highlight thật | `services/pdf_xfdf_export.dart` (177 dòng): `xmlns="http://ns.adobe.com/XFDF/1.0"`, mỗi annot `action="annotReplace"`, highlight có `rect="l b r t"` + `quadpoints`, `color="#RRGGBB"`, `opacity="0.40"`, `<contents>`; ghi chú → `<text icon="Comment">`; mỗi `lineRects` là một `<highlight>` riêng; bookmark **bị bỏ qua** vì XFDF không có loại đó. **Chỉ xuất, không nhập XFDF** — nhập liệu chỉ nhận JSON của ta, để không bao giờ âm thầm làm bẩn kho Hive |
+| B2 | **Bản chụp PDF**: burn highlight + marker ghi chú lên ảnh trang, tự viết tệp PDF, chia sẻ qua share sheet | `services/pdf_snapshot_burn.dart` (207 dòng) composite tay trên `Uint8List`: `pdfAnnotationPixelRect` lật trục Y theo toạ độ PDF (origin góc dưới-trái), `fillBgraRect` src*a+dst*(1-a) với alpha highlight 0.35, ép A=255, `pdfSnapshotRenderSize(dpi: 150, maxLongEdge: 1800)`; `services/pdf_snapshot_pdf_writer.dart` (241 dòng) dựng PDF từ số 0: 1 image XObject/trang, hàng RGB + byte lọc PNG 0, zlib, `/DecodeParms << /Predictor 15 ... >>`, xref 20 byte/entry, `/Title` UTF-16BE, `/CreationDate (D:…+00'00')`. **Không** phải "stamp" thật: tệp PDF gốc không bị sửa |
+| glue | `services/pdf_export_service.dart` (366 dòng) + `widgets/pdf_export_row.dart` (224 dòng) | Service là **chỗ duy nhất** đụng `dart:io`/plugin; mọi lỗi trả về `messageKey` chứ không ném. Ảnh render → `getTemporaryDirectory()` → `SharePlus.instance.share(ShareParams(files: [XFile(path)]))` (chú ý: v12 **không còn** `shareXFiles`). Snapshot chỉ lấy các trang **có** chú thích, sắp xếp theo trang, cắt ở `kPdfSnapshotMaxPages = 24` và báo "Đã giới hạn số trang xuất". UI = 4 nút (JSON / XFDF / PDF ảnh / Nhập JSON) đặt trong `⋮ → Quản lý ghi chú`, kết quả in **inline dưới nút** (SnackBar bị sheet cao 0.88 che) |
+
+**Bốn điều nên biết khi bảo trì:**
+
+1. **Import không bao giờ âm thầm ghi đè.** Luồng là: `FilePicker.pickFiles(withData: true)`
+   → decode → **dialog xác nhận** đếm số annotation + cho biết tệp PDF có trùng không
+   ("Cùng một tệp PDF" / "Tệp PDF đã thay đổi sau khi xuất" / "Số trang khác với lúc xuất")
+   → "Highlight đang có sẽ được giữ nguyên." → mới merge. Người dùng được cảnh báo
+   trước khi dữ liệu của họ đổi, kể cả khi chọn nhầm tệp.
+2. **Giới hạn nói thẳng, không tô hồng:** B2 là ảnh nên **không copy được chữ** từ bản
+   chụp, không search được trong nó, và **chữ của ghi chú không rasterized** (app không
+   có font rasterizer trong tiến trình này) — nên ghi chú đi kèm marker xanh
+   `0xFF1E88E5` + tệp JSON. Muốn vector-text hoặc stamp thật vào file gốc thì phải
+   `package:pdf` hoặc đường pdfium-native (`native/pdfium_file_write.dart` của engine),
+   tức là một quyết định khác, để sau.
+3. **i18n route:** 23 key mới vào `lib/core/language/priority_ui_overrides.dart`
+   (5 ngôn ngữ `en,hi,zh,zh_TW,si`, `vi` = chính key), **không** chạy `generate_arbs.py`
+   /`generate_legacy_ui_fallbacks.py` (generator đang kẹt ở 6 mismatch có trước).
+   Chuỗi lỗi đặt **ngay trong service** (`PdfSidecarProblem.problemLabelKey`) để test
+   `pdf_export_i18n_test.dart` kiểm được từng cái. `JSON` và `XFDF` cố ý không đăng ký:
+   không có dấu nên không nằm trong diện rule #5.
+4. **51 test mới** (`pdf_annotation_sidecar_test` 13, `pdf_xfdf_export_test` 10,
+   `pdf_snapshot_burn_test` 11, `pdf_snapshot_pdf_writer_test` 10,
+   `pdf_export_i18n_test` 7) — nâng `test/pdf_reader` lên **14 file / 134 test**. Tất cả
+   chạy trong `flutter test` thường, **không cần thiết bị**, vì 4 module lõi là số học
+   thuần trên bytes. Test PDF-writer không so ảnh: nó tự parse lại tệp vừa sinh và
+   **đo `/Length` bằng khoảng cách thật** giữa `\nstream\n` và `\nendstream` — đó là chỗ
+   PDF tự viết hay chết.
+
+**CI đã đỏ 3 run liên tiếp — 5 nhóm lỗi, đều là lỗi kiểu "không có SDK trong sandbox":**
+`math.min/math.max` bị suy luận ra `num` làm vỡ 7 chỗ index `Uint8List[int]` (⇒ bỏ hẳn
+`dart:math` trong file burn, ternary + khai báo kiểu tường minh); `const ZLibEncoder()`
+(vừa không có `encode()`, vừa không const) ⇒ `ZLibCodec(level: 6).encode()`;
+`ZLibCodec` có ctor `factory` nên **cũng không** bọc `const` được;
+`latin1.decode(x, allowMalformed: true)` — `allowMalformed` chỉ tồn tại trên
+`Utf8Decoder.decode`, không phải `Codec.decode`; test dùng `Color(...)`/`Rect(...)` mà chỉ
+`import 'dart:ui' show Rect`; và `const PdfSidecarDecoding.failure(p)` với `p` là biến vòng
+lặp. Run xanh: **34058736214**. Mẹo khi `analyze.log` bị artifact che: lấy
+`gh api repos/<owner>/<repo>/actions/jobs/<job-id>/logs` (job id = `.databaseId`, không phải
+`.id`) rồi đọc URL SAS bằng `fetch_page` theo `chunkIndex`; `--no-fatal-infos
+--no-fatal-warnings` nghĩa là **chỉ ERROR mới làm đỏ CI**, warning/info phải tự đọc log.
+Để thấy HẾT output trong một lần, có thể tạm comment `include: package:flutter_lints/…`
+rồi revert ngay ở commit sau (commit chỉ đụng yaml/docs thì workflow bỏ qua ⇒ phải kèm
+một thay đổi trong `lib/**`).
+
+**Chưa làm trong mục 2.6 (cố ý để lại):** xuất Markdown/CSV cho quotes+notes+từ đã lưu,
+in qua `printing`, và "stamp highlight thành PDF" thật (sửa tệp gốc bằng pdfium) — cả ba
+đều cần quyết định về dependency chữ ký số/chỉnh sửa tệp, nằm ngoài B1+B2. **Nợ cũ vẫn còn:**
+nghiệm thu thiết bị cho §4.1/§4.2, `flutter test test/pdf_reader` trên máy owner, và một
+lượt round-trip thật qua share sheet (xuất JSON → nhập lại trên thiết bị khác) vì
+`share_plus`/`file_picker` không có test tự động trong repo.
+
 ### WAVE 0 — "Sửa cho đúng cái đã có" (2–3 ngày dev) — **P0**
 Không thêm tính năng mới. Đây là wave rẻ nhất và tác động UX lớn nhất.
 

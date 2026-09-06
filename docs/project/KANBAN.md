@@ -27,7 +27,7 @@
 | READ-630-03 | Marker "từ đã lưu": tắt mặc định, bật khi cần + legend | ✅ done | toggle toolbar PDF+Web (chờ nghiệm thu build) |
 | READ-630-04 | Lưu hàng loạt thông minh (từ/cụm/câu → topic + language) PDF + Web | ✅ done | extractor dùng chung + language (chờ nghiệm thu) |
 | PDF-W0 | Wave 0 PDF Reader: nối selection + TTS câu + định danh file + hệ toạ độ + i18n + test sàn | 🔨 doing | code + CI 🟢 05-09-2026 (`370ff91`, run 33984585516: analyze 0 error + test rule #5 xanh) trên `arena/01a07250-in4up`; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` ở máy dev |
-| PDF-W1 | Wave 1 PDF Reader (đợt A+B): mục lục + tìm trong file + thumbnail + nhảy trang + phím tắt + chủ đề đọc | 🔨 doing | code + CI 🟢 06-09-2026 (đợt A `032f321` run 34012087643; đợt B 1.5 run 34042635098 — analyze 0 error với lint BẬT + test rule #5 xanh) trên `arena/01a07250-in4up`; ADR-0004; docs §4.1+§4.2; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` (9 file, chưa chạy lần nào) + 1.4/1.7/1.8 |
+| PDF-W1 | Wave 1+2 PDF Reader (đợt A+B+C): mục lục + tìm trong file + thumbnail + nhảy trang + phím tắt + chủ đề đọc + xuất/nhập chú thích (JSON/XFDF/bản chụp PDF) | 🔨 doing | code + CI 🟢 06-09-2026 (đợt A `032f321` run 34012087643; đợt B 1.5 run 34042635098; đợt C = wave 2 mục 2.6 B1+B2, run xanh cuối `34058736214` sau 3 run đỏ vì API Dart — chi tiết docs §4.3) trên `arena/01a07250-in4up`; ADR-0004; docs §4.1+§4.2+§4.3; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` (14 file / 134 test, chưa chạy lần nào) + một lượt round-trip share sheet thật + 1.4/1.7/1.8 + phần 2.6 còn lại (Markdown/CSV, in, stamp thật vào tệp) |
 | READ-630-05 | Nhận diện text ĐÃ LƯU khi lưu nhiều text + gợi ý hành động (thêm ngữ cảnh/cập nhật/bỏ qua) | 📋 proposed | nền: badge đã-có + smart-fill đã có (PLAN-015) |
 | LISTEN-630-01 | Tab Nghe: AB loop bottom overflow 24px + nút "lặp câu tiếp theo" | ✅ done | LRC budget + onPanelChanged (chờ nghiệm thu) |
 | LISTEN-823-01 | Tab Nghe: rèm LRC + AI sheet + dịch Hiểu + transcript đúng audio | ✅ done | 1d05ce9; CI run 32660616256 xanh (chờ QA đổi file nhanh) |
@@ -655,8 +655,8 @@
 - **Lịch sử:**
   - 2026-08-23 | created | owner via chat (đề xuất tính năng sắp tới)
 
-### PDF-W1 — Wave 1 PDF Reader đợt A: điều hướng & tìm kiếm (đứng trên API pdfrx)
-- **Trạng thái:** doing — code + CI 🟢, chờ nghiệm thu thiết bị (chưa phải done)
+### PDF-W1 — PDF Reader: đợt A (điều hướng & tìm kiếm, đứng trên API pdfrx) · B (chủ đề đọc) · C (xuất/nhập chú thích B1+B2)
+- **Trạng thái:** doing — code + CI 🟢 cả 3 đợt, chờ nghiệm thu thiết bị + `flutter test` của owner (chưa phải done)
 - **Nguồn:** owner (2026-09-05): "Tiếp tục theo lộ trình bạn cho là hợp lý nhất"
   sau khi Wave 0 xanh CI. Lộ trình ở `docs/pdf_reader_readera_upgrade.md` mục
   WAVE 1; đợt A = 1.1 + 1.2 + 1.3 + nhảy trang nhanh (1.4/1.5/1.7/1.8/1.9 để
@@ -718,6 +718,29 @@
     gì: đóng băng bằng `git add -A && git commit` → `git ls-remote` xác nhận GitHub còn
     `032f321` → fetch refspec tường minh → `git diff` rỗng → `git reset --hard`. Củng cố
     rule của repo: **push liên tục là backup duy nhất**.
+- **2026-09-06 (đợt C, wave 2 mục 2.6 — bậc B1+B2 do owner chốt):**
+  - B1: sidecar `.in4up.json` có version + header định danh file (size+mtime, KHÔNG dùng
+    đường dẫn), `decodePdfAnnotationSidecar` không ném / bỏ dòng hỏng, `compareSidecarToFile`
+    → `sameFile|contentChanged|pageChanged|unknown`, `mergeSidecarAnnotations` (mới hơn thắng,
+    hoà → note dài hơn), `PdfReaderController.importAnnotations()` cấp uuid mới cho dòng nhập.
+    XFDF cho highlight+ghi chú (`annotReplace`, rect/quadpoints/opacity 0.40, `<text
+    icon="Comment">`) — **chỉ xuất**, không nhập XFDF.
+  - B2: "in bản chụp" = `PdfPage.render()` → BGRA thô → `pdf_snapshot_burn.dart` phủ
+    highlight (alpha 0.35) + marker ghi chú → `pdf_snapshot_pdf_writer.dart` tự dựng PDF
+    (image XObject/trang, Predictor 15, xref) → `share_plus` 12 (`ShareParams(files:[XFile])`,
+    không còn `shareXFiles`). **Không thêm dependency nào**; tệp PDF gốc không bị sửa nên đây
+    là ảnh chụp, không phải stamp thật.
+  - Nối UI: `widgets/pdf_export_row.dart` trong `⋮ → Quản lý ghi chú` (JSON / XFDF / PDF ảnh /
+    Nhập JSON), kết quả in inline vì sheet 0.88 che SnackBar; import hiện dialog xác nhận đếm
+    số annotation + mức trùng tệp trước khi merge. 23 key vào `priority_ui_overrides.dart`
+    (không chạy generator), 5 file test mới = 51 test, `test/pdf_reader` lên 14 file / 134 test.
+  - Ghi lại 5 lỗi biên dịch CI bắt được (§4.3) — không có Flutter SDK trong sandbox nên CI là
+    compiler duy nhất: `math.min/max` suy luận `num` làm vỡ index `Uint8List`,
+    `const ZLibEncoder().encode()` (sai cả tên API lẫn const), `ZLibCodec` ctor là `factory`
+    nên không const, `latin1.decode(..., allowMalformed:)` không tồn tại, test thiếu `Color`
+    trong `import 'dart:ui' show …`.
+  - **Chưa done:** chạy `flutter test test/pdf_reader` + round-trip share sheet trên máy owner;
+    nghiệm thu thiết bị §4.1/§4.2 còn treo; phần 2.6 còn lại (Markdown/CSV, in, stamp thật).
 
 ### PDF-W0 — Wave 0 PDF Reader: sửa cho đúng cái đã có (không thêm tính năng)
 - **Trạng thái:** doing — code xong, CI 🟢 (analyze 0 error + rule #5 test xanh); còn nghiệm thu thiết bị

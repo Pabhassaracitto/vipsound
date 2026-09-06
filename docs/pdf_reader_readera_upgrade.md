@@ -296,6 +296,58 @@ sạch.
       `T` mở mục lục, `B` đóng/mở bookmark, `+`/`-` zoom, `Esc` đóng ô tìm (lần 2 mới
       rời màn đọc); gõ chữ trong ô tìm **không** bị `F/T/B/Space` nuốt.
 - [ ] Menu ⋮ → "Phím tắt": bảng phím hiện đúng hành vi đang chạy.
+- [ ] Menu ⋮ → "Chủ đề đọc": 4 ô xem trước, chọn `Sáng`/`Giấy (sepia)` → nền quanh
+      trang đổi tức thì, kéo thanh trượt độ sáng → trang tối/sáng dần mà chữ vẫn đọc
+      được; thoát vào file khác rồi quay lại → **còn nhớ** theme đã chọn.
+- [ ] Ở chế độ `Đêm`: highlight tìm kiếm vẫn vàng/cam đúng màu (không bị đảo theo),
+      highlight ghi chú vẫn thấy; ảnh trong trang bị đảo (có cảnh báo trong sheet).
+
+
+### 4.2 KẾT QUẢ WAVE 1 — đợt B: chủ đề đọc (đã code 06-09-2026, CI 🟢 `arena/01a07250-in4up`)
+
+Run 34042635098 xanh **ngay lần đầu** (analyze 0 error với lint BẬT + test rule #5),
+đúng một lý do: mọi tên API pdfrx đều được đối chiếu trong tag `pdfrx-v2.2.24`
+trước khi gõ, thay vì đoán như vụ `LogicalKeyboardKey.plus` (§4.1.1).
+
+| ID | Đã code | Cơ chế thật |
+|---|---|---|
+| 1.5 | 4 chủ đề đọc: `Tối (mặc định)` / `Sáng` / `Giấy (sepia)` / `Đêm (đảo màu)` + **thanh trượt độ sáng trang −100%…+100%** | `services/pdf_reader_theme.dart` (thuần, 290 dòng, 223 dòng test) sinh `List<PdfPageVeil>` → `widgets/pdf_page_veils.dart` dịch sang `pagePaintCallbacks` (vẽ lên **trên** ảnh trang đã render); nền quanh trang = `PdfViewerParams.backgroundColor`. Chọn trong `⋮ → Chủ đề đọc` (`widgets/pdf_reader_theme_sheet.dart`), lưu `prefs` toàn cục (`pdf_reader.theme_v1`, `pdf_reader.page_brightness_v1`) |
+
+**Ba quyết định phạm vi, nói rõ để không bị hiểu là "theme xịn như ReadEra":**
+
+1. **Không reflow, không đổi font.** ReadEra đổi được font/cỡ chữ vì EPUB reflow được;
+   PDF là ảnh trang. Nên ở đây "theme" = biến đổi màu trên ảnh trang. Ai dùng
+   ReadEra trên EPUB so sánh sẽ thấy khác — đó là giới hạn của định dạng, không phải
+   của app.
+2. **Đêm = đảo màu bằng `difference(trắng, α=1.0)`**, chấp nhận **ảnh trong trang bị
+   đảo theo** (đánh đổi y hệt ReadEra, và app bạn cũng thấy vậy). Đã báo cho người
+   dùng bằng một dòng trong sheet, không dấu. Vì PDF là nội dung cố định nên không
+   có bản "chữ trắng nền đen thật sự" — muốn vậy phải reflow, tức bỏ luôn layout
+   gốc. `Tối (mặc định)` tồn tại chính là để người không thích đảo màu có lối khác.
+3. **Không đổi chrome** (AppBar, toolbar, panel vẫn nền tối như cũ). Đây là điểm khác
+   biệt có ý thức với ReadEra: full-chrome theme nghĩa là viết lại tương phản cho
+   từng widget trong màn đọc, mà CI của repo **không có widget test** ⇒ không thể xác
+   minh trong sandbox. Để sau nghiệm thu thiết bị (mục Nợ).
+
+**Bốn chi tiết kỹ thuật nếu ai đó bảo trì phần này (đều đã verify, không phải suy):**
+* Chữ ký callback của 2.2.24 là `void Function(Canvas, Rect, PdfPage)`
+  (`PdfViewerPagePaintCallback`) — **không phải** `PdfPageRenderedImageContext` như
+  các bản 2.4+; viết theo bản mới là lỗi biên dịch.
+* `pagePaintCallbacks` **không** nằm trong `doChangesRequireReload` của
+  `PdfViewerParams` ⇒ đổi theme một mình KHÔNG làm viewer vẽ lại trang đã render.
+  Phải gọi `PdfViewerController.invalidate()` (public, "gần giống setState nhưng gọi
+  được ngoài State"), có guard `isReady`.
+* **Thứ tự trong `pagePaintCallbacks` là thứ tự vẽ.** Veil phải đứng TRƯỚC
+  `pageTextMatchPaintCallback`, nếu không highlight tìm kiếm bị sepia/đảo màu theo
+  trang. Mặc định (`dark`, brightness 0) trả về `null` ⇒ không thêm lớp composite nào.
+* Bottom sheet nằm ở overlay riêng: `setState` của màn đọc **không** rebuild nó, nên
+  sheet bọc `StatefulBuilder` để ô đang chọn + % cập nhật khi tinh chỉnh.
+
+**Nợ có ý thức sau đợt B:** (a) full-chrome theme + `Day` đổi màu cả panel — cần thiết
+bị; (b) độ sáng trang chỉ là veil, **không** đổi độ sáng màn hình thiết bị (cần plugin
+`screen_brightness`, chưa có trong pubspec — không tự ý thêm); (c) theme chưa áp dụng
+cho `Text Mode` (chỉ màn đọc PDF); (d) 1.4 vẫn chờ quyết định nâng pdfrx; (e) 1.7/1.8
+chờ owner chốt sau nghiệm thu.
 
 
 ### WAVE 0 — "Sửa cho đúng cái đã có" (2–3 ngày dev) — **P0**

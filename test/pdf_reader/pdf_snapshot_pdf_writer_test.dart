@@ -29,8 +29,12 @@ PdfSnapshotFrame frame({
 }
 
 /// Tìm nội dung object `n` (giữa `n 0 obj` và `endobj`) trong tệp PDF.
+///
+/// `latin1.decode` là cách đọc byte-as-ASCII ngắn nhất; an toàn vì latin1 ánh xạ
+/// đủ 0..255 (không bao giờ ném). `allowMalformed` KHÔNG tồn tại trên `Codec.decode`
+/// (nó là tham số riêng của `Utf8Decoder`), nên đừng có thêm vào.
 Uint8List objectBytes(Uint8List pdf, int n) {
-  final text = latin1.decode(pdf, allowMalformed: true);
+  final text = latin1.decode(pdf);
   final start = text.indexOf('$n 0 obj');
   expect(start, greaterThan(-1), reason: 'không tìm thấy object $n');
   final end = text.indexOf('endobj', start);
@@ -43,7 +47,7 @@ Uint8List objectBytes(Uint8List pdf, int n) {
 /// hình của PDF tự viết: lệch 1 byte là mọi trình đọc báo file hỏng.
 ({int length, Uint8List stream}) streamOf(Uint8List pdf, int n) {
   final obj = objectBytes(pdf, n);
-  final text = latin1.decode(obj, allowMalformed: true);
+  final text = latin1.decode(obj);
   final declared = int.parse(RegExp(r'/Length (\d+)').firstMatch(text)!.group(1)!);
   const marker = '\nstream\n';
   final start = text.indexOf(marker) + marker.length;
@@ -103,7 +107,7 @@ void main() {
     expect(img, contains('/Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns 2'));
 
     final s = streamOf(pdf, 5);
-    final rows = const ZLibCodec().decode(s.stream);
+    final rows = ZLibCodec().decode(s.stream);
     // 1 dòng: [filter=0][R G B][R G B]
     expect(rows, <int>[0, 10, 20, 30, 40, 50, 60]);
     expect(s.length, greaterThan(0));
@@ -111,7 +115,7 @@ void main() {
 
   test('xref: mọi offset trỏ đúng vào "<n> 0 obj", số bản ghi = /Size', () {
     final pdf = buildPdfFromSnapshotFrames(frames: [frame(), frame()]);
-    final text = latin1.decode(pdf, allowMalformed: true);
+    final text = latin1.decode(pdf);
     final xrefAt = text.lastIndexOf('\nxref\n');
     expect(xrefAt, greaterThan(0));
     final headerMatch = RegExp(r'xref\n0 (\d+)\n').firstMatch(text.substring(xrefAt))!;
@@ -179,7 +183,7 @@ void main() {
     );
     final page = latin1.decode(objectBytes(pdf, 3));
     expect(page, contains('/MediaBox [0 0 595.28 841.89]'));
-    final rows = const ZLibCodec().decode(streamOf(pdf, 5).stream);
+    final rows = ZLibCodec().decode(streamOf(pdf, 5).stream);
     expect(rows.length, 2 * (1 + 3 * 3));
     expect(rows[0], 0);
     expect(rows.sublist(1, 4), <int>[128, 128, 128]);

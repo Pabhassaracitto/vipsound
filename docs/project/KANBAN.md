@@ -27,7 +27,7 @@
 | READ-630-03 | Marker "từ đã lưu": tắt mặc định, bật khi cần + legend | ✅ done | toggle toolbar PDF+Web (chờ nghiệm thu build) |
 | READ-630-04 | Lưu hàng loạt thông minh (từ/cụm/câu → topic + language) PDF + Web | ✅ done | extractor dùng chung + language (chờ nghiệm thu) |
 | PDF-W0 | Wave 0 PDF Reader: nối selection + TTS câu + định danh file + hệ toạ độ + i18n + test sàn | 🔨 doing | code + CI 🟢 05-09-2026 (`370ff91`, run 33984585516: analyze 0 error + test rule #5 xanh) trên `arena/01a07250-in4up`; CÒN nghiệm thu thiết bị + `flutter test test/pdf_reader` ở máy dev |
-| PDF-W1 | Wave 1 PDF Reader (đợt A): mục lục + tìm trong file + thumbnail + nhảy trang | 🔨 doing | code + CI 🟢 05-09-2026 (`c4f62c5`, run 34011472325) trên `arena/01a07250-in4up`; ADR-0004; CÒN nghiệm thu thiết bị + 1.4/1.5/1.7/1.8/1.9 chưa làm |
+| PDF-W1 | Wave 1 PDF Reader (đợt A): mục lục + tìm trong file + thumbnail + nhảy trang + phím tắt | 🔨 doing | code + CI 🟢 06-09-2026 (`bca3bd3`, run 34011982375 — analyze 0 error với lint BẬT + test rule #5 xanh) trên `arena/01a07250-in4up`; ADR-0004; CÒN nghiệm thu thiết bị + 1.4/1.5/1.7/1.8 chưa làm (1.9 đã xong) |
 | READ-630-05 | Nhận diện text ĐÃ LƯU khi lưu nhiều text + gợi ý hành động (thêm ngữ cảnh/cập nhật/bỏ qua) | 📋 proposed | nền: badge đã-có + smart-fill đã có (PLAN-015) |
 | LISTEN-630-01 | Tab Nghe: AB loop bottom overflow 24px + nút "lặp câu tiếp theo" | ✅ done | LRC budget + onPanelChanged (chờ nghiệm thu) |
 | LISTEN-823-01 | Tab Nghe: rèm LRC + AI sheet + dịch Hiểu + transcript đúng audio | ✅ done | 1d05ce9; CI run 32660616256 xanh (chờ QA đổi file nhanh) |
@@ -696,6 +696,17 @@
     merge `7219ee4` kéo `arena/01a0251e-in4up` (Sherpa live STT + LRC đa ngữ) vào
     trước để tránh giẫm nhau — resolve 1 conflict ở `priority_ui_overrides.dart`
     (hai bên cùng append cuối map; giữ cả hai, 294 key, 0 trùng).
+  - 2026-09-05 | bổ sung 1.9 | agent | `251c935` phím tắt desktop (`Focus.onKeyEvent`
+    + bảng ưu tiên thuần + hộp "Phím tắt" trong menu More) + 6 nhãn i18n;
+    `dc487d1`/`eb56035` sửa comment lẫn ký tự Hán.
+  - 2026-09-06 | đỏ → xanh | agent | `251c935` đỏ vì `LogicalKeyboardKey.plus` không
+    tồn tại (2 error, thấy được nhờ probe tắt lint — xem docs/skills/ci-red-debugging
+    §6.2); `bca3bd3` sửa + revert `analysis_options.yaml` về baseline → run
+    34011982375 🟢 cả hai step.
+  - 2026-09-06 | merge 251e lần 2 | agent | `78f8513`+`71291c3` (tipitaka reading +
+    pubspec.lock): auto-merge sạch, `priority_ui_overrides.dart` lên 318 key, **0 trùng**
+    (kiểm tra bằng script đếm key — auto-merge không đảm bảo hết trùng key trong cùng
+    một const map).
 
 ### PDF-W0 — Wave 0 PDF Reader: sửa cho đúng cái đã có (không thêm tính năng)
 - **Trạng thái:** doing — code xong, CI 🟢 (analyze 0 error + rule #5 test xanh); còn nghiệm thu thiết bị

@@ -249,6 +249,7 @@ Còn 1 `info • unnecessary_import` (`dart:ui show Rect` trong controller) cũn
 | 1.3 | Thumbnail strip/grid `PdfPageView` | `widgets/pdf_thumbnail_grid.dart` trong tab "Trang" của cùng một sheet, `maximumDpi: 96`, `GridView.builder` dựng lười, viền sáng theo trang hiện tại, chạm = `goToPage` | Chưa "vuốt từ cạnh dưới"; chưa `RepaintBoundary` (pdfrx đã dựng ảnh theo ô, nhưng thêm sẽ tốt hơn cho máy yếu) |
 | — | Nhảy nhanh tới trang | Nhãn "37 / 512" trên toolbar thành nút → dialog TextField số + Slider (`_showJumpToPageDialog`) | Chưa "đi tới %"/dòng nhập "12.5%" |
 | 1.6 | Bookmark thật | Đã xong từ Wave 0 (`AnnotationType.bookmark` + ★ + reopen) | — |
+| 1.9 | Phím tắt Windows/Linux | `services/pdf_shortcuts.dart` = **bảng ưu tiên** thuần (không phải widget) + `Focus(onKeyEvent:)` bọc `Stack` của màn đọc: `→ ← PageUp/Down` lật trang, `Home/End` đầu/cuối, `Space` ẩn/hiện chrome, `F` tìm, `T` mục lục, `B` bookmark, `+ -` zoom, `Esc` đóng. Ctrl/Cmd/Alt nhường trình duyệt, **ngoại trừ** `+`/`-`. Menu "More" có hộp **Phím tắt** dựng từ đúng bảng đó ⇒ tài liệu không lệch code | Chưa có `Alt+←/→` lịch sử, chưa cấu hình lại phím, chưa phím cho TTS (Play/Pause/M/N) |
 
 **Quyết định kiến trúc** (chi tiết ở `docs/adr/0004-...`): không nâng pdfrx (giữ
 `^2.2.24`, không đụng `pubspec.yaml`/`third_party/pdfium_flutter`); không tự build
@@ -266,6 +267,18 @@ vì nó đi thư mục, không hard-code danh sách file.
 Windows. Lý do: chúng đổi cảm giác đọc toàn màn hình và nên chốt sau khi owner đi
 qua nghiệm thu thiết bị của đợt A.
 
+#### 4.1.1 CI đã đỏ một lần ở đợt A, và đó là bài học về API bàn phím
+
+`bca3bd3` xanh; trước đó `251c935` đỏ vì **`LogicalKeyboardKey.plus` không tồn tại**
+(numpad là `add`; `+` ở hàng phím thường là Shift+`=` nên chỉ cần `equal`). Lỗi này
+grep code không ra và `tail -n 300 analyze.log` của workflow **cuộn mất** (noise
+`lib/**` + `packages/**` khi lint bật) ⇒ phải dùng probe tắt lint một commit, đọc
+`analyze.log` qua job-log URL, rồi **revert probe ở commit kế** — mô tả đầy đủ ở
+`docs/skills/ci-red-debugging/SKILL.md` §6.1–6.2. Với lint tắt, 123 issue lọt hết
+vào 300 dòng, nên danh sách lỗi đợt đó là **đủ**: chỉ 2 error, `test/pdf_reader/**`
+sạch.
+
+
 **Checklist nghiệm thu thiết bị — đợt A:**
 
 - [ ] Sách có outline: mở nút ★Mục lục → thấy cây, chương đang đọc được sáng, bấm 3
@@ -279,6 +292,10 @@ qua nghiệm thu thiết bị của đợt A.
 - [ ] Thu nhỏ: lướt grid 300 trang không khựng > 1 frame mỗi ô; bấm ô → tới trang đó.
 - [ ] Nhãn trang → dialog số + slider → tới trang 187 trong 1 cú.
 - [ ] Locale `en`/`hi`: chrome của panel tìm/mục lục không còn chữ Việt.
+- [ ] Cắm bàn phím (Windows): `→ ←` lật trang, `Space` ẩn/hiện chrome, `F` mở ô tìm,
+      `T` mở mục lục, `B` đóng/mở bookmark, `+`/`-` zoom, `Esc` đóng ô tìm (lần 2 mới
+      rời màn đọc); gõ chữ trong ô tìm **không** bị `F/T/B/Space` nuốt.
+- [ ] Menu ⋮ → "Phím tắt": bảng phím hiện đúng hành vi đang chạy.
 
 
 ### WAVE 0 — "Sửa cho đúng cái đã có" (2–3 ngày dev) — **P0**

@@ -1,6 +1,7 @@
 import 'package:in4up/features/learn_by_heart/controllers/learn_by_heart_provider.dart';
 import 'package:in4up/features/learn_by_heart/models/learn_by_heart_item.dart';
 import 'package:in4up/features/learn_by_heart/models/recitation_category.dart';
+import 'package:in4up/features/learn_by_heart/models/recitation_language.dart';
 import 'package:in4up/features/tipitaka/models/book.dart';
 import 'package:in4up/features/tipitaka/models/segment.dart';
 import 'package:in4up/features/tipitaka/services/tipitaka_worklist_service.dart';
@@ -69,7 +70,10 @@ class TipitakaLearnByHeartService {
       vietnameseText: segment.translationVi ?? segment.translationEn ?? '',
       sourceLang: 'pi',
       targetLang: capture.snapshot.translationLanguage,
-      ttsLanguage: capture.snapshot.translationLanguage,
+      // Tipiṭaka passages are memorized in Pāli; translation remains the
+      // aligned support side in the existing bilingual/chunking pipeline.
+      memorizeSide: MemorizeSide.source,
+      ttsLanguage: 'pi',
       sourceAnchor: capture.anchor,
       contextSnapshot: capture.snapshot,
       createdAt: now,

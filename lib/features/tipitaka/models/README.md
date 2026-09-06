@@ -50,3 +50,9 @@ file and a raw Pa-Auk `.db`/`.sqlite`/`.zip` source package. Raw source tables
 are detected and normalized in Dart before installation, so Python is not
 required on a user device. The Python importer remains available for
 developer/release builds and very large offline imports.
+
+For a developer device, place files in
+`<Application Documents>/in4up/tipitaka/imports/` and press the scan button in
+the data manager. Pāli files are processed before translation files. The app
+keeps downloads/imports off the startup path so a large database never blocks
+or unexpectedly changes the library.

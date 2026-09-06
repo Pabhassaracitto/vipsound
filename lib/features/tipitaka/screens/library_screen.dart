@@ -245,6 +245,17 @@ class _TipitakaLibraryScreenState extends State<TipitakaLibraryScreen> {
   }
 
   String _collectionTitle(TipitakaCollection collection, bool isVietnamese) {
+    final names = '${collection.namePali} ${collection.nameEn} ${collection.nameVi}'
+        .toLowerCase();
+    if (names.contains('abh') || names.contains('vi diệu')) {
+      return isVietnamese ? 'Vi diệu pháp' : 'Abhidhamma';
+    }
+    if (names.contains('vin') || names.contains('luật')) {
+      return isVietnamese ? 'Luật tạng' : 'Vinaya';
+    }
+    if (names.contains('sutta') || names.contains('kinh')) {
+      return isVietnamese ? 'Kinh tạng' : 'Sutta';
+    }
     if (isVietnamese && collection.nameVi.trim().isNotEmpty) {
       return collection.nameVi;
     }
@@ -341,6 +352,11 @@ class _BookList extends StatelessWidget {
       itemBuilder: (context, index) {
         final book = books[index];
         final title = titleFor(book, isVietnamese);
+        final indexLabel = book.catalogIndex;
+        final preciseTitle = indexLabel.editionCode.isEmpty
+            ? '${indexLabel.canonicalCode} — $title'
+            : '${indexLabel.canonicalCode} · ${indexLabel.editionCode} · '
+                '${indexLabel.editionLabel} — $title';
         return Card(
           margin: EdgeInsets.zero,
           child: ListTile(
@@ -351,7 +367,7 @@ class _BookList extends StatelessWidget {
               child: Text('${index + 1}'),
             ),
             title: Text(
-              title,
+              preciseTitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -359,7 +375,7 @@ class _BookList extends StatelessWidget {
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '${book.code}${book.namePali.isEmpty ? '' : ' · ${book.namePali}'}',
+                '${indexLabel.normalizedCode} · ${indexLabel.sourceTable}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

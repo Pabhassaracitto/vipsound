@@ -108,6 +108,31 @@ class TipitakaDb {
     return p.join(documents.path, _appDirectoryName, dbName);
   }
 
+  /// Files placed here can be discovered by the data manager without using a
+  /// file picker:
+  /// `<application documents>/in4up/tipitaka/imports/`.
+  static Future<List<String>> discoverImportFiles({String? directoryPath}) async {
+    final directory = directoryPath == null
+        ? p.join(
+            (await getApplicationDocumentsDirectory()).path,
+            _appDirectoryName,
+            'imports',
+          )
+        : directoryPath;
+    final folder = Directory(directory);
+    if (!await folder.exists()) return const [];
+    final files = <String>[];
+    await for (final entity in folder.list(recursive: true, followLinks: false)) {
+      if (entity is! File) continue;
+      final extension = p.extension(entity.path).toLowerCase();
+      if (const ['.db', '.sqlite', '.sqlite3', '.zip'].contains(extension)) {
+        files.add(entity.path);
+      }
+    }
+    files.sort();
+    return files;
+  }
+
   /// Copies `assets/db/tipitaka.sqlite` to the writable application directory.
   ///
   /// The copy is only made when no installed DB exists. A developer can put a

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../models/color_mode.dart';
 import '../pdf_reader_controller.dart';
+import '../services/pdf_reader_theme.dart';
 
 class PdfToolbar extends StatelessWidget {
   final PdfReaderController controller;
@@ -22,6 +23,10 @@ class PdfToolbar extends StatelessWidget {
   final VoidCallback? onShowToc;
   final VoidCallback? onJumpToPage;
   final VoidCallback? onShowShortcuts;
+  /// Mở bảng chọn chủ đề đọc + độ sáng trang (Wave 1.5).
+  final VoidCallback? onShowReaderTheme;
+  /// Trạng thái theme hiện tại — chỉ để dòng menu hiển thị nhãn đang chọn.
+  final PdfReaderThemeState? readerThemeState;
 
   const PdfToolbar({
     super.key,
@@ -37,6 +42,8 @@ class PdfToolbar extends StatelessWidget {
     this.onShowToc,
     this.onJumpToPage,
     this.onShowShortcuts,
+    this.onShowReaderTheme,
+    this.readerThemeState,
   });
 
   @override
@@ -151,6 +158,8 @@ class PdfToolbar extends StatelessWidget {
                 onShowAnnotations: onShowAnnotations,
                 onOpenGrammarSettings: onOpenGrammarSettings,
                 onShowShortcuts: onShowShortcuts,
+                onShowReaderTheme: onShowReaderTheme,
+                readerThemeState: readerThemeState,
                 onBatchSavePage: onBatchSavePage,
               ),
             ],
@@ -387,6 +396,8 @@ class _MoreButton extends StatelessWidget {
   final VoidCallback? onOpenGrammarSettings;
   final VoidCallback? onBatchSavePage;
   final VoidCallback? onShowShortcuts;
+  final VoidCallback? onShowReaderTheme;
+  final PdfReaderThemeState? readerThemeState;
 
   const _MoreButton({
     required this.controller,
@@ -395,6 +406,8 @@ class _MoreButton extends StatelessWidget {
     this.onOpenGrammarSettings,
     this.onBatchSavePage,
     this.onShowShortcuts,
+    this.onShowReaderTheme,
+    this.readerThemeState,
   });
 
   @override
@@ -428,6 +441,8 @@ class _MoreButton extends StatelessWidget {
         onOpenGrammarSettings: onOpenGrammarSettings,
         onBatchSavePage: onBatchSavePage,
         onShowShortcuts: onShowShortcuts,
+        onShowReaderTheme: onShowReaderTheme,
+        readerThemeState: readerThemeState,
       ),
     );
   }
@@ -438,6 +453,8 @@ class _PdfOptionsSheet extends StatelessWidget {
   final VoidCallback? onShowAnnotations;
   final VoidCallback? onOpenGrammarSettings;
   final VoidCallback? onBatchSavePage;
+  final VoidCallback? onShowReaderTheme;
+  final PdfReaderThemeState? readerThemeState;
   final VoidCallback? onShowShortcuts;
 
   const _PdfOptionsSheet({
@@ -446,6 +463,8 @@ class _PdfOptionsSheet extends StatelessWidget {
     this.onOpenGrammarSettings,
     this.onBatchSavePage,
     this.onShowShortcuts,
+    this.onShowReaderTheme,
+    this.readerThemeState,
   });
 
   @override
@@ -531,6 +550,35 @@ class _PdfOptionsSheet extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onBatchSavePage?.call();
+              },
+            ),
+
+          // Wave 1.5: đổi chủ đề đọc là lý do số 1 người ta rời app đọc PDF vệ
+          // sinh mắt (ReadEra có menu riêng cho việc này). Ở đây chỉ phủ màu
+          // trang + đổi nền quanh trang, KHÔNG đổi chrome ⇒ không lây sang nơi khác.
+          if (onShowReaderTheme != null)
+            ListTile(
+              leading: const Icon(
+                Icons.palette_outlined,
+                color: Color(0xFFFFB74D),
+              ),
+              title: Text(
+                context.uiText('Chủ đề đọc'),
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: readerThemeState == null
+                  ? null
+                  : Text(
+                      _readerThemeSubtitle(context, readerThemeState!),
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+              onTap: () {
+                Navigator.pop(context);
+                onShowReaderTheme?.call();
               },
             ),
 
@@ -700,4 +748,14 @@ class _TtsSpeedSlider extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Nhãn chủ đề đọc cho dòng menu: tên theme đã dịch + `%` độ sáng (số, không
+/// cần dịch). Ghép ở đây thay vì `uiText('...$x...')` vì chỉ key CHÍNH XÁC mới
+/// được duyệt trong catalog (rule #5).
+String _readerThemeSubtitle(BuildContext context, PdfReaderThemeState state) {
+  final summary = pdfReaderThemeSummary(state);
+  final label = context.uiText(summary.labelKey);
+  final suffix = summary.suffix;
+  return suffix == null ? label : '$label$suffix';
 }

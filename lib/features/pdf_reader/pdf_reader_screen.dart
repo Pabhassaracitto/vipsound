@@ -28,11 +28,14 @@ import 'pdf_reader_controller.dart';
 import 'services/pdf_file_identity.dart';
 import 'services/pdf_geometry.dart';
 import 'services/pdf_outline_index.dart';
+import 'services/pdf_reader_theme.dart';
 import 'services/pdf_search_query.dart';
 import 'services/pdf_shortcuts.dart';
 import 'services/pdf_word_hit_test.dart';
 import 'widgets/pdf_annotation_layer.dart';
 import 'widgets/pdf_annotation_sheet.dart';
+import 'widgets/pdf_page_veils.dart';
+import 'widgets/pdf_reader_theme_sheet.dart';
 import 'widgets/pdf_search_panel.dart';
 import 'widgets/pdf_toc_panel.dart';
 import 'widgets/pdf_toolbar.dart';
@@ -74,6 +77,10 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
   bool _outlineLoading = true;
   bool _hasOutline = true;
   PdfTextSearcher? _searcher;
+  // Wave 1.5: chủ đề đọc = nền quanh trang + lớp phủ màu trang + độ sáng. Đây là
+  // cài đặt TOÀN CỤC của tính năng (không theo từng file), mặc định giữ nguyên
+  // hình dạng cũ của app ⇒ nâng cấp không đổi giao diện người dùng đang quen.
+  PdfReaderThemeState _readerTheme = PdfReaderThemeState.defaults;
   bool _searchOpen = false;
   String _searchQuery = '';
   bool _searchIgnoreTones = false;
@@ -89,6 +96,9 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
     _controller.viewerCommands
       ..goToPage = _goToPage
       ..revealRect = _revealRect;
+
+    // Đọc trước khi trang kịp render: màu sai trong 1 khung hình là nhấp nháy.
+    unawaited(_loadReaderThemeState());
   }
 
   void _goToPage(int pageIndex) {
@@ -377,6 +387,64 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
     );
   }
 
+  /// Painter cho vùng trang, đã trộn đúng thứ tự: phủ màu chủ đề đọc TRƯỚC, rồi
+  /// mới tới tô sáng kết quả tìm ⇒ highlight luôn giữ đúng màu của nó. Trả về
+  /// null khi không có gì phải vẽ để pdfrx đi đường tắt của nó.
+  List<PdfViewerPagePaintCallback>? _pagePaintCallbacks() {
+    final painters = pdfPageVeilPainters(_readerTheme.pageVeils);
+    final match = _searcher?.pageTextMatchPaintCallback;
+    if (painters.isEmpty && match == null) return null;
+    return <PdfViewerPagePaintCallback>[
+      ...painters,
+      if (match != null) match,
+    ];
+  }
+
+  Future<void> _loadReaderThemeState() async {
+    final state = await loadPdfReaderThemeState();
+    if (!mounted || state == _readerTheme) return;
+    setState(() => _readerTheme = state);
+    _invalidateViewerPaint();
+  }
+
+  void _applyReaderTheme(PdfReaderThemeState state) {
+    if (state == _readerTheme) return;
+    setState(() => _readerTheme = state);
+    _invalidateViewerPaint();
+    unawaited(savePdfReaderThemeState(state));
+  }
+
+  /// Bắt buộc sau khi đổi theme: `pagePaintCallbacks` KHÔNG nằm trong
+  /// `doChangesRequireReload` của pdfrx 2.2.24 ⇒ không tự vẽ lại trang đã render.
+  void _invalidateViewerPaint() {
+    if (!_pdfViewerController.isReady) return;
+    _pdfViewerController.invalidate();
+  }
+
+  void _showReaderThemeSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      // Sheet tự bọc SafeArea (xem pdf_reader_theme_sheet.dart) ⇒ không bật
+      // useSafeArea ở đây, kẻo cộng dồn padding hai lần.
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161B22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      // Sheet nằm ở overlay riêng nên setState của màn đọc KHÔNG rebuild nó;
+      // StatefulBuilder giữ cho ô đang chọn + % độ sáng cập nhật khi tinh chỉnh.
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => PdfReaderThemeSheet(
+          state: _readerTheme,
+          onChanged: (state) {
+            setSheetState(() {});
+            _applyReaderTheme(state);
+          },
+        ),
+      ),
+    );
+  }
+
   void _showShortcutHelp() {
     showDialog<void>(
       context: context,
@@ -549,7 +617,9 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
                           onSearch: _toggleSearch,
                           onShowToc: _openTocNavigator,
                           onJumpToPage: _showJumpToPageDialog,
-                      onShowShortcuts: _showShortcutHelp,
+                          onShowShortcuts: _showShortcutHelp,
+                          readerThemeState: _readerTheme,
+                          onShowReaderTheme: _showReaderThemeSheet,
                         ),
                         if (_searchOpen)
                           PdfSearchPanel(
@@ -687,7 +757,9 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
       widget.pdfPath,
       controller: _pdfViewerController,
       params: PdfViewerParams(
-        backgroundColor: const Color(0xFF1A1A2E),
+        // Chủ đề đọc đổi NỀN QUANH TRANG (canvas của viewer). `backgroundColor`
+        // nằm trong doChangesRequireReload của pdfrx nên đây là phần tự vẽ lại.
+        backgroundColor: Color(_readerTheme.surroundColorArgb),
         // BÔI ĐEN CHỮ: trước đây selection của viewer KHÔNG hề được nối vào
         // controller (`setSelection` chỉ được gọi ở Text Mode) → 6 hành động
         // trên SelectionBar vô dụng ở chế độ PDF. Nay lấy trực tiếp từ pdfrx;
@@ -704,11 +776,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
         onViewerReady: _onViewerReady,
         // pdfrx tự tô sáng kết quả khớp qua paint callback: không cần overlay
         // riêng, và vùng khớp nằm ĐÚNG theo charRects của structured text.
-        pagePaintCallbacks: _searcher == null
-            ? null
-            : <PdfViewerPagePaintCallback>[
-                _searcher!.pageTextMatchPaintCallback,
-              ],
+        pagePaintCallbacks: _pagePaintCallbacks(),
         matchTextColor: const Color(0xFFFFEB3B).withValues(alpha: 0.35),
         activeMatchTextColor: const Color(0xFFFF9800).withValues(alpha: 0.60),
         loadingBannerBuilder: (context, bytesDownloaded, totalBytes) {

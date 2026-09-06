@@ -29,6 +29,9 @@ class LearnByHeartItem {
   final List<LineTimestamp> lineTimestamps;
   final List<Chunk> chunkList;
 
+  /// Số lần lặp TTS RIÊNG cho từng dòng (1-based line → count 1…999).
+  final Map<int, int> lineRepeatOverrides;
+
   // ===== ELABORATIVE FIELDS =====
   final List<String> keywords;
   final String shortMeaning;
@@ -64,6 +67,7 @@ class LearnByHeartItem {
     this.memorizeSide = MemorizeSide.target,
     this.lineTimestamps = const [],
     this.chunkList = const [],
+    this.lineRepeatOverrides = const {},
     this.keywords = const [],
     this.shortMeaning = '',
     this.lifeConnection = '',
@@ -153,6 +157,7 @@ class LearnByHeartItem {
     MemorizeSide? memorizeSide,
     List<LineTimestamp>? lineTimestamps,
     List<Chunk>? chunkList,
+    Map<int, int>? lineRepeatOverrides,
     List<String>? keywords,
     String? shortMeaning,
     String? lifeConnection,
@@ -185,6 +190,7 @@ class LearnByHeartItem {
       memorizeSide: memorizeSide ?? this.memorizeSide,
       lineTimestamps: lineTimestamps ?? this.lineTimestamps,
       chunkList: chunkList ?? this.chunkList,
+      lineRepeatOverrides: lineRepeatOverrides ?? this.lineRepeatOverrides,
       keywords: keywords ?? this.keywords,
       shortMeaning: shortMeaning ?? this.shortMeaning,
       lifeConnection: lifeConnection ?? this.lifeConnection,
@@ -207,6 +213,23 @@ class LearnByHeartItem {
 
   // ==================== SERIALIZATION ====================
 
+  /// Parse `lineRepeatOverrides` từ JSON (key stringified, value num/string)
+  /// — TOLERANT: bỏ entry rác (key không parse được / count ngoài 1…999).
+  /// Item cũ không có key → const {}.
+  static Map<int, int> _parseLineRepeatOverrides(dynamic raw) {
+    final map = raw as Map<dynamic, dynamic>?;
+    if (map == null) return const {};
+    final out = <int, int>{};
+    map.forEach((k, v) {
+      final line = int.tryParse('$k') ?? -1;
+      final count = (v is num ? v : int.tryParse('$v') ?? 0).toInt();
+      if (line >= 1 && line <= 999 && count >= 1 && count <= 999) {
+        out[line] = count;
+      }
+    });
+    return out;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -222,6 +245,10 @@ class LearnByHeartItem {
       'memorizeSide': memorizeSide.name,
       'lineTimestamps': lineTimestamps.map((t) => t.toJson()).toList(),
       'chunkList': chunkList.map((c) => c.toJson()).toList(),
+      // JSON không có int key → stringified.
+      'lineRepeatOverrides': {
+        for (final e in lineRepeatOverrides.entries) '${e.key}': e.value,
+      },
       'keywords': keywords,
       'shortMeaning': shortMeaning,
       'lifeConnection': lifeConnection,
@@ -269,6 +296,10 @@ class LearnByHeartItem {
               ?.map((c) => Chunk.fromJson(c as Map<String, dynamic>))
               .toList() ??
           const [],
+      // Tolerant: key JSON là string; bỏ entry rác — item cũ không có
+      // key này → const {}.
+      lineRepeatOverrides:
+          _parseLineRepeatOverrides(json['lineRepeatOverrides']),
       keywords: (json['keywords'] as List<dynamic>?)
               ?.map((k) => k as String)
               .toList() ??

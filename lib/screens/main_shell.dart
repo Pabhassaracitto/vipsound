@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:in4up/l10n/app_localizations.dart';
 
 import '../features/learn_by_heart/screens/learn_by_heart_hub_screen.dart';
+import '../features/cabin/screens/live_cabin_screen.dart';
+import '../features/cabin/widgets/live_caption_bubble.dart';
 import '../features/pdf_reader/pdf_reader_screen.dart';
 import '../features/web_reader/web_reader_screen.dart';
 import '../features/tipitaka/tipitaka.dart';
@@ -366,6 +368,13 @@ class _MainShellState extends State<MainShell> {
 
     final contentTools = <tools.ToolItem>[
       tools.ToolItem(
+        id: 'live_cabin',
+        title: context.uiText('Dịch Live Cabin'),
+        subtitle: context.uiText('Dịch cabin song song trực tiếp từ giọng nói'),
+        icon: Icons.interpreter_mode_rounded,
+        color: const Color(0xFF00E676),
+      ),
+      tools.ToolItem(
         id: 'youtube_downloader',
         title: l10n.youtube,
         subtitle: l10n.youtubeSubtitle,
@@ -644,6 +653,13 @@ class _MainShellState extends State<MainShell> {
     }
 
     switch (toolId) {
+      case 'live_cabin':
+        nav.push(
+          MaterialPageRoute(
+            builder: (_) => const LiveCabinScreen(),
+          ),
+        );
+        return;
       case 'learn_by_heart':
         nav.push(
           MaterialPageRoute(
@@ -684,15 +700,7 @@ class _MainShellState extends State<MainShell> {
         );
         return;
       case 'youtube_downloader':
-  await YoutubeSheet.show(context);
-  break;
-        nav.push(
-          MaterialPageRoute(
-            builder: (_) => const YoutubeExplorerScreen(
-              apiKey: 'AIzaSyCpGdv7ESAJkH5-FYIC8-x0R0EWGgvK0Lg',
-            ),
-          ),
-        );
+        await YoutubeSheet.show(context);
         return;
       case 'pdf_reader':
         final result = await FilePicker.pickFiles(
@@ -740,16 +748,12 @@ class _MainShellState extends State<MainShell> {
         pushVocab(l10n.review, const Color(0xFF66BB6A), const ReviewTab());
         return;
               case 'tipitaka':
-        // Adaptive: build with DB = open directly; without DB = show download
-        try {
-          nav.push(
-            MaterialPageRoute(builder: (_) => const TipitakaLibraryScreen()),
-          );
-        } catch (_) {
-          nav.push(
-            MaterialPageRoute(builder: (_) => const TipitakaDownloadScreen()),
-          );
-        }
+        // The library resolves the bundled/installed DB and shows the data
+        // manager when neither is available. Navigator.push itself cannot
+        // catch an async database-open failure, so do not use try/catch here.
+        nav.push(
+          MaterialPageRoute(builder: (_) => const TipitakaLibraryScreen()),
+        );
         return;
       case 'shell_ui_settings':
         await _openShellUiSettings();
@@ -917,6 +921,8 @@ class _MainShellState extends State<MainShell> {
             ),
             // ★ Wordlist floating bubble – persistent TTS across tabs
             const WordlistBubble(),
+            // ★ Live Cabin floating bubble – persistent STS across tabs
+            const LiveCaptionBubble(),
           ],
         ),
       ),

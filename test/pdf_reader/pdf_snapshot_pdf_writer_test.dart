@@ -103,7 +103,7 @@ void main() {
     expect(img, contains('/Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns 2'));
 
     final s = streamOf(pdf, 5);
-    final rows = ZLibDecoder().decodeBytes(s.stream);
+    final rows = const ZLibCodec().decode(s.stream);
     // 1 dòng: [filter=0][R G B][R G B]
     expect(rows, <int>[0, 10, 20, 30, 40, 50, 60]);
     expect(s.length, greaterThan(0));
@@ -179,7 +179,7 @@ void main() {
     );
     final page = latin1.decode(objectBytes(pdf, 3));
     expect(page, contains('/MediaBox [0 0 595.28 841.89]'));
-    final rows = ZLibDecoder().decodeBytes(streamOf(pdf, 5).stream);
+    final rows = const ZLibCodec().decode(streamOf(pdf, 5).stream);
     expect(rows.length, 2 * (1 + 3 * 3));
     expect(rows[0], 0);
     expect(rows.sublist(1, 4), <int>[128, 128, 128]);

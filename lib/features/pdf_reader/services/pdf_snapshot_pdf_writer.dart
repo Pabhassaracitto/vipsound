@@ -101,7 +101,9 @@ Uint8List buildPdfFromSnapshotFrames({
     );
 
     final rows = _rgbRowsWithPngFilter(frame);
-    final compressed = const ZLibEncoder().encode(rows, level: 6);
+    // `ZLibEncoder` là AsynchronousEncoder (không có `encode()`, ctor không
+    // const); đường đúng cho dữ liệu đã có trong bộ nhớ là codec:
+    final compressed = const ZLibCodec(level: 6).encode(rows);
     bodies[imageNum] = _streamObject(
       '<< /Type /XObject /Subtype /Image'
       ' /Width ${frame.pixelWidth} /Height ${frame.pixelHeight}'

@@ -124,7 +124,7 @@ final class PdfAnnotationSidecar {
   factory PdfAnnotationSidecar.fromJson(Map<String, dynamic> json) {
     final file = json['file'];
     final fileMap = file is Map
-        ? Map<String, dynamic>.from(file as Map)
+        ? Map<String, dynamic>.from(file)
         : <String, dynamic>{};
     final rawList = json['annotations'];
     final annotations = <PdfAnnotation>[];
@@ -173,7 +173,7 @@ PdfSidecarDecoding decodePdfAnnotationSidecar(String raw) {
   if (decoded is! Map) {
     return const PdfSidecarDecoding.failure(PdfSidecarProblem.notJson);
   }
-  final json = Map<String, dynamic>.from(decoded as Map);
+  final json = Map<String, dynamic>.from(decoded);
   if (json['format'] != kPdfAnnotationSidecarFormat) {
     return const PdfSidecarDecoding.failure(PdfSidecarProblem.wrongFormat);
   }

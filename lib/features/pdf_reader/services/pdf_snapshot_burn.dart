@@ -7,7 +7,6 @@
 // `flutter test`, không cần thiết bị, không cần plugin. Đổi lại: không in được
 // CHỮ của ghi chú lên ảnh (app không có font rasterizer trong tiến trình này);
 // ghi chú đi theo marker + sidecar, và điều đó được nói thẳng ở docs.
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Color, Rect;
 
@@ -57,8 +56,11 @@ PdfPixelRect? pdfAnnotationPixelRect(
   if (pageWidthPts <= 0 || pageHeightPts <= 0) return null;
   if (imageWidth <= 0 || imageHeight <= 0) return null;
   final left = bounds.left, right = bounds.right;
-  final high = math.max(bounds.top, bounds.bottom);
-  final low = math.min(bounds.top, bounds.bottom);
+  // KHÔNG dùng min/max của dart:math ở file này: trong SDK mà CI đang dùng,
+  // kết quả bị suy luận là `num`, và mọi phép index `Uint8List[int]` phía sau vỡ
+  // hàng loạt (7 error một lúc). Ternary tường minh giữ kiểu `int`/`double`.
+  final high = bounds.top > bounds.bottom ? bounds.top : bounds.bottom;
+  final low = bounds.top > bounds.bottom ? bounds.bottom : bounds.top;
   if (right <= left || high <= low) return null;
 
   final sx = imageWidth / pageWidthPts;
@@ -80,21 +82,13 @@ PdfPixelRect? pdfAnnotationPixelRect(
 /// Vuông nhỏ đánh dấu "chỗ này có ghi chú", đặt ở mép phải của vùng được chọn.
 /// Không thể in chữ nên phải có dấu hiệu nhìn thấy được.
 PdfPixelRect pdfNoteMarkerRect(PdfPixelRect region, {required int imageWidth}) {
-  final side = region.height.clamp(6, 14).toInt();
-  // `int.clamp()` trả về `num` ⇒ phải `.toInt()`; quên là không biên dịch được
-  // (và `flutter analyze` của repo báo error ngay, không chỉ warning).
-  var x = region.x + region.width + 2;
-  if (x + side > imageWidth) {
-    x = (region.x + region.width - side)
-        .clamp(0, math.max(0, imageWidth - side))
-        .toInt();
-  }
-  return PdfPixelRect(
-    x: x.clamp(0, math.max(0, imageWidth - side)).toInt(),
-    y: region.y,
-    width: side,
-    height: side,
-  );
+  final int side = region.height < 6 ? 6 : (region.height > 14 ? 14 : region.height);
+  final int maxStart = imageWidth - side < 0 ? 0 : imageWidth - side;
+  int x = region.x + region.width + 2;
+  if (x + side > imageWidth) x = region.x + region.width - side;
+  if (x < 0) x = 0;
+  if (x > maxStart) x = maxStart;
+  return PdfPixelRect(x: x, y: region.y, width: side, height: side);
 }
 
 /// Sơn một chữ nhật lên buffer BGRA (hoà màu theo alpha, giữ nguyên kênh alpha
@@ -111,20 +105,24 @@ int fillBgraRect({
 }) {
   if (bgra.length < imageWidth * imageHeight * 4) return 0;
   if (rect.isEmpty) return 0;
-  final a = alpha.clamp(0.0, 1.0);
+  final double a = alpha < 0 ? 0.0 : (alpha > 1 ? 1.0 : alpha);
   if (a <= 0) return 0;
-  final srcR = (colorArgb >> 16) & 0xFF;
-  final srcG = (colorArgb >> 8) & 0xFF;
-  final srcB = colorArgb & 0xFF;
-  final xEnd = math.min(imageWidth, rect.x + rect.width);
-  final yEnd = math.min(imageHeight, rect.y + rect.height);
-  var touched = 0;
-  for (var y = math.max(0, rect.y); y < yEnd; y++) {
-    var i = (y * imageWidth + math.max(0, rect.x)) * 4;
-    for (var x = math.max(0, rect.x); x < xEnd; x++, i += 4, touched += 4) {
-      bgra[i] = (srcB * a + bgra[i] * (1 - a)).round();
-      bgra[i + 1] = (srcG * a + bgra[i + 1] * (1 - a)).round();
-      bgra[i + 2] = (srcR * a + bgra[i + 2] * (1 - a)).round();
+  final int srcR = (colorArgb >> 16) & 0xFF;
+  final int srcG = (colorArgb >> 8) & 0xFF;
+  final int srcB = colorArgb & 0xFF;
+  final double inv = 1.0 - a;
+  final int xStart = rect.x < 0 ? 0 : rect.x;
+  final int yStart = rect.y < 0 ? 0 : rect.y;
+  final int xRaw = rect.x + rect.width, yRaw = rect.y + rect.height;
+  final int xEnd = xRaw < imageWidth ? xRaw : imageWidth;
+  final int yEnd = yRaw < imageHeight ? yRaw : imageHeight;
+  int touched = 0;
+  for (int y = yStart; y < yEnd; y++) {
+    int i = (y * imageWidth + xStart) * 4;
+    for (int x = xStart; x < xEnd; x++, i += 4, touched += 4) {
+      bgra[i] = (srcB * a + bgra[i] * inv).round();
+      bgra[i + 1] = (srcG * a + bgra[i + 1] * inv).round();
+      bgra[i + 2] = (srcR * a + bgra[i + 2] * inv).round();
       bgra[i + 3] = 255;
     }
   }
@@ -196,13 +194,13 @@ int burnPdfAnnotationsIntoBgra(
   final scale = dpi / 72.0;
   var w = (pageWidthPts * scale).round();
   var h = (pageHeightPts * scale).round();
-  final long = math.max(w, h);
+  final int long = w > h ? w : h;
   if (long > maxLongEdge) {
     final shrink = maxLongEdge / long;
     w = (w * shrink).round();
     h = (h * shrink).round();
   }
-  return (width: math.max(1, w), height: math.max(1, h));
+  return (width: w < 1 ? 1 : w, height: h < 1 ? 1 : h);
 }
 
 /// Màu nền trang khi render cho bản in (trắng, không phải nền tối của app).

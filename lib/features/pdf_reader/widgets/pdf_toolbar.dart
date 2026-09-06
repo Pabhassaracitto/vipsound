@@ -17,6 +17,11 @@ class PdfToolbar extends StatelessWidget {
   /// từ/cụm/câu → 1 chủ đề + ngôn ngữ).
   final VoidCallback? onBatchSavePage;
 
+  /// Mở tìm kiếm trong file / mục lục / nhảy nhanh tới trang (Wave 1).
+  final VoidCallback? onSearch;
+  final VoidCallback? onShowToc;
+  final VoidCallback? onJumpToPage;
+
   const PdfToolbar({
     super.key,
     required this.controller,
@@ -27,6 +32,9 @@ class PdfToolbar extends StatelessWidget {
     this.writingMode = false,
     this.onSendToWriting,
     this.onBatchSavePage,
+    this.onSearch,
+    this.onShowToc,
+    this.onJumpToPage,
   });
 
   @override
@@ -72,19 +80,50 @@ class PdfToolbar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+              IconButton(
+                tooltip: context.uiText('Tìm trong file'),
+                onPressed: () {
+                  onUserInteraction?.call();
+                  onSearch?.call();
+                },
+                icon: const Icon(Icons.search, size: 20, color: Colors.white70),
+              ),
+              IconButton(
+                tooltip: context.uiText('Mục lục'),
+                onPressed: () {
+                  onUserInteraction?.call();
+                  onShowToc?.call();
+                },
+                icon: const Icon(
+                  Icons.list_alt,
+                  size: 20,
+                  color: Colors.white70,
                 ),
-                child: Text(
-                  '${controller.currentPage + 1} / ${controller.totalPages}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.white60,
-                    fontFamily: 'monospace',
+              ),
+              // Nhãn trang là NÚT: đọc sách dài thì "tới trang 187" nhanh hơn
+              // vuốt 187 lần, và đây là lối vào duy nhất khi không có mục lục.
+              InkWell(
+                onTap: onJumpToPage == null
+                    ? null
+                    : () {
+                        onUserInteraction?.call();
+                        onJumpToPage!();
+                      },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${controller.currentPage + 1} / ${controller.totalPages}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white60,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ),
               ),

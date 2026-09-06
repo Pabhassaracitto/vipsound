@@ -1828,4 +1828,48 @@ const Map<String, Map<String, String>> priorityUiOverrides = {
     'zh_TW': '前往',
     'si': 'යන්න',
   },
+
+  // ── PDF Reader (wave 1: phím tắt desktop) ─────────────────────────
+  'Phím tắt': {
+    'en': 'Keyboard shortcuts',
+    'hi': 'कीबोर्ड शॉर्टकट',
+    'zh': '键盘快捷键',
+    'zh_TW': '键盘快速键',
+    'si': 'කීබෝඩ් කෙටිමාර්ග',
+  },
+  'Trang sau': {
+    'en': 'Next page',
+    'hi': 'अगला पृष्ठ',
+    'zh': '下一页',
+    'zh_TW': '下一頁',
+    'si': 'ඊළඟ පිටුව',
+  },
+  'Trang đầu': {
+    'en': 'First page',
+    'hi': 'पहला पृष्ठ',
+    'zh': '第一页',
+    'zh_TW': '第一頁',
+    'si': 'පළමු පිටුව',
+  },
+  'Trang cuối': {
+    'en': 'Last page',
+    'hi': 'अंतिम पृष्ठ',
+    'zh': '最后一页',
+    'zh_TW': '最後一頁',
+    'si': 'අවසන් පිටුව',
+  },
+  'Ẩn/hiện thanh công cụ': {
+    'en': 'Show/hide toolbar',
+    'hi': 'टूलबार छिपाएँ/दिखाएँ',
+    'zh': '显示/隐藏工具栏',
+    'zh_TW': '顯示/隱藏工具列',
+    'si': 'මෙවලම් තීරුව පෙන්වන්න/සඟවන්න',
+  },
+  'Phóng to': {
+    'en': 'Zoom in',
+    'hi': 'ज़ूम इन',
+    'zh': '放大',
+    'zh_TW': '放大',
+    'si': 'විශාලනය',
+  },
 };

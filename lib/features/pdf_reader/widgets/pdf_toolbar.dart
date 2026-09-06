@@ -21,6 +21,7 @@ class PdfToolbar extends StatelessWidget {
   final VoidCallback? onSearch;
   final VoidCallback? onShowToc;
   final VoidCallback? onJumpToPage;
+  final VoidCallback? onShowShortcuts;
 
   const PdfToolbar({
     super.key,
@@ -35,6 +36,7 @@ class PdfToolbar extends StatelessWidget {
     this.onSearch,
     this.onShowToc,
     this.onJumpToPage,
+    this.onShowShortcuts,
   });
 
   @override
@@ -148,6 +150,7 @@ class PdfToolbar extends StatelessWidget {
                 onUserInteraction: onUserInteraction,
                 onShowAnnotations: onShowAnnotations,
                 onOpenGrammarSettings: onOpenGrammarSettings,
+                onShowShortcuts: onShowShortcuts,
                 onBatchSavePage: onBatchSavePage,
               ),
             ],
@@ -383,6 +386,7 @@ class _MoreButton extends StatelessWidget {
   final VoidCallback? onShowAnnotations;
   final VoidCallback? onOpenGrammarSettings;
   final VoidCallback? onBatchSavePage;
+  final VoidCallback? onShowShortcuts;
 
   const _MoreButton({
     required this.controller,
@@ -390,6 +394,7 @@ class _MoreButton extends StatelessWidget {
     this.onShowAnnotations,
     this.onOpenGrammarSettings,
     this.onBatchSavePage,
+    this.onShowShortcuts,
   });
 
   @override
@@ -422,6 +427,7 @@ class _MoreButton extends StatelessWidget {
         onShowAnnotations: onShowAnnotations,
         onOpenGrammarSettings: onOpenGrammarSettings,
         onBatchSavePage: onBatchSavePage,
+        onShowShortcuts: onShowShortcuts,
       ),
     );
   }
@@ -432,12 +438,14 @@ class _PdfOptionsSheet extends StatelessWidget {
   final VoidCallback? onShowAnnotations;
   final VoidCallback? onOpenGrammarSettings;
   final VoidCallback? onBatchSavePage;
+  final VoidCallback? onShowShortcuts;
 
   const _PdfOptionsSheet({
     required this.controller,
     this.onShowAnnotations,
     this.onOpenGrammarSettings,
     this.onBatchSavePage,
+    this.onShowShortcuts,
   });
 
   @override
@@ -523,6 +531,34 @@ class _PdfOptionsSheet extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onBatchSavePage?.call();
+              },
+            ),
+
+          // Wave 1.9: phím tắt desktop là tính năng "reader thật" mà người dùng
+          // Windows không tự đoán được — phải tra tại chỗ.
+          if (onShowShortcuts != null)
+            ListTile(
+              leading: const Icon(
+                Icons.keyboard,
+                color: Color(0xFF9CCC65),
+              ),
+              title: Text(
+                context.uiText('Phím tắt'),
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                '→ ← Space F T B + − Esc',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right,
+                  color: Colors.white54),
+              onTap: () {
+                Navigator.pop(context);
+                onShowShortcuts?.call();
               },
             ),
 

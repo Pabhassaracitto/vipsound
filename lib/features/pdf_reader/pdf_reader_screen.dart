@@ -29,6 +29,7 @@ import 'services/pdf_file_identity.dart';
 import 'services/pdf_geometry.dart';
 import 'services/pdf_outline_index.dart';
 import 'services/pdf_search_query.dart';
+import 'services/pdf_shortcuts.dart';
 import 'services/pdf_word_hit_test.dart';
 import 'widgets/pdf_annotation_layer.dart';
 import 'widgets/pdf_annotation_sheet.dart';
@@ -304,6 +305,123 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
     );
   }
 
+  // ── Phím tắt desktop (Wave 1.9) ───────────────────────────
+  KeyEventResult _handleShortcutKey(FocusNode node, KeyEvent event) {
+    // KeyUp để ngỏ: xử lý cả Down lẫn Repeat để giữ phím lật trang liền mạch.
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final action = resolvePdfReaderShortcut(
+      key: event.logicalKey,
+      isPdfView: _controller.viewMode == PdfViewMode.pdfView,
+      searchOpen: _searchOpen,
+      hasModifier: HardwareKeyboard.instance.isControlPressed ||
+          HardwareKeyboard.instance.isMetaPressed ||
+          HardwareKeyboard.instance.isAltPressed,
+    );
+    if (action == null) return KeyEventResult.ignored;
+    _applyShortcut(action);
+    return KeyEventResult.handled;
+  }
+
+  void _applyShortcut(PdfReaderShortcut action) {
+    switch (action) {
+      case PdfReaderShortcut.nextPage:
+        _goToPage(_controller.currentPage + 1);
+      case PdfReaderShortcut.previousPage:
+        _goToPage(_controller.currentPage - 1);
+      case PdfReaderShortcut.firstPage:
+        _goToPage(0);
+      case PdfReaderShortcut.lastPage:
+        _goToPage(_controller.totalPages - 1);
+      case PdfReaderShortcut.toggleChrome:
+        _toggleChromeVisibility();
+      case PdfReaderShortcut.openSearch:
+        if (!_searchOpen) _toggleSearch();
+      case PdfReaderShortcut.openToc:
+        _openTocNavigator();
+      case PdfReaderShortcut.toggleBookmark:
+        unawaited(_controller.toggleBookmark());
+      case PdfReaderShortcut.zoomIn:
+        _zoom(byUp: true);
+      case PdfReaderShortcut.zoomOut:
+        _zoom(byUp: false);
+      case PdfReaderShortcut.closeSearchOrScreen:
+        if (_searchOpen) {
+          _closeSearch();
+        } else {
+          Navigator.of(context).maybePop();
+        }
+    }
+  }
+
+  void _zoom({required bool byUp}) {
+    if (!_pdfViewerController.isReady) return;
+    unawaited(
+      byUp
+          ? _pdfViewerController.zoomUp()
+          : _pdfViewerController.zoomDown(),
+    );
+  }
+
+  void _showShortcutHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF161B22),
+          title: Text(
+            dialogContext.uiText('Phím tắt'),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final row in pdfReaderShortcutHelp)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: Text(
+                            row.keys.join('  '),
+                            style: const TextStyle(
+                              color: Color(0xFF64B5F6),
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            dialogContext
+                                .uiText(pdfShortcutHelpLabelKey(row.action)),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(dialogContext.uiText('Đóng')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showJumpToPageDialog() async {
     final total = _controller.totalPages;
     if (total <= 0) return;
@@ -377,120 +495,129 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: _controller.viewMode == PdfViewMode.textMode
-                ? _buildTextMode()
-                : _buildSplitOrPdf(),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              ignoring: !_showTopChrome,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 220),
-                offset: _showTopChrome ? Offset.zero : const Offset(0, -1.05),
-                curve: Curves.easeOutCubic,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: _showTopChrome ? 1 : 0,
-                  child: Column(
+      body: Focus(
+        // Phím tắt desktop (Wave 1.9). Đặt TRÊN viewer: TextField/Sheet
+        // nhận key trước (chúng là nút focus sâu hơn) nên gõ chữ không bị
+        // phím tắt nuốt — xem services/pdf_shortcuts.dart.
+        autofocus: true,
+        onKeyEvent: _handleShortcutKey,
+        child:   Stack(
+          children: [
+            Positioned.fill(
+              child: _controller.viewMode == PdfViewMode.textMode
+                  ? _buildTextMode()
+                  : _buildSplitOrPdf(),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: !_showTopChrome,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 220),
+                  offset: _showTopChrome ? Offset.zero : const Offset(0, -1.05),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    opacity: _showTopChrome ? 1 : 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PdfToolbar(
+                          controller: _controller,
+                          title: _title,
+                          onUserInteraction: () => _showChrome(),
+                          onShowAnnotations: _showAnnotationManager,
+                          onOpenGrammarSettings: _openGrammarSettings,
+                          writingMode: widget.writingMode,
+                          onSendToWriting: _sendPdfToWriting,
+                          onBatchSavePage: _openBatchSaveFromPage,
+                          onSearch: _toggleSearch,
+                          onShowToc: _openTocNavigator,
+                          onJumpToPage: _showJumpToPageDialog,
+                      onShowShortcuts: _showShortcutHelp,
+                        ),
+                        if (_searchOpen)
+                          PdfSearchPanel(
+                            searcher: _searcher,
+                            initialQuery: _searchQuery,
+                            initialIgnoreTones: _searchIgnoreTones,
+                            onSearch: _runSearch,
+                            onClose: _closeSearch,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                ignoring: !_showBottomChrome,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 220),
+                  offset: _showBottomChrome ? Offset.zero : const Offset(0, 1.1),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    opacity: _showBottomChrome ? 1 : 0,
+                    child: PdfTtsBar(
+                      controller: _controller,
+                      onUserInteraction: () => _showChrome(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_controller.hasSelection)
+              Positioned(
+                // Neo vào safe area + chiều cao thật của thanh chrome thay vì
+                // số đo cứng 92/20 (khi chrome ẩn, thanh chọn đè lên FAB).
+                bottom: MediaQuery.of(context).padding.bottom +
+                    (_showBottomChrome ? 84 : 16),
+                left: 16,
+                right: 16,
+                child: _SelectionBar(
+                  controller: _controller,
+                  onSaveNote: _saveSelectionAsAnnotation,
+                  onHighlight: _highlightSelection,
+                  onOpenTextStudio: _openSelectedInTextStudio,
+                  writingMode: widget.writingMode,
+                ),
+              ),
+            // Legend marker "từ đã lưu" — chỉ khi BẬT (READ-630-03)
+            if (_controller.showRecallMarkers &&
+                _controller.viewMode == PdfViewMode.pdfView)
+              Positioned(
+                left: 12,
+                bottom: 88,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      PdfToolbar(
-                        controller: _controller,
-                        title: _title,
-                        onUserInteraction: () => _showChrome(),
-                        onShowAnnotations: _showAnnotationManager,
-                        onOpenGrammarSettings: _openGrammarSettings,
-                        writingMode: widget.writingMode,
-                        onSendToWriting: _sendPdfToWriting,
-                        onBatchSavePage: _openBatchSaveFromPage,
-                        onSearch: _toggleSearch,
-                        onShowToc: _openTocNavigator,
-                        onJumpToPage: _showJumpToPageDialog,
-                      ),
-                      if (_searchOpen)
-                        PdfSearchPanel(
-                          searcher: _searcher,
-                          initialQuery: _searchQuery,
-                          initialIgnoreTones: _searchIgnoreTones,
-                          onSearch: _runSearch,
-                          onClose: _closeSearch,
-                        ),
+                      _RecallLegendSwatch(color: Color(0xFF4CAF50), label: 'đã lưu'),
+                      _RecallLegendSwatch(color: Color(0xFFFFC107), label: 'ghi chú'),
+                      _RecallLegendSwatch(color: Color(0xFFF44336), label: 'đến kỳ ôn'),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              ignoring: !_showBottomChrome,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 220),
-                offset: _showBottomChrome ? Offset.zero : const Offset(0, 1.1),
-                curve: Curves.easeOutCubic,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: _showBottomChrome ? 1 : 0,
-                  child: PdfTtsBar(
-                    controller: _controller,
-                    onUserInteraction: () => _showChrome(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (_controller.hasSelection)
-            Positioned(
-              // Neo vào safe area + chiều cao thật của thanh chrome thay vì
-              // số đo cứng 92/20 (khi chrome ẩn, thanh chọn đè lên FAB).
-              bottom: MediaQuery.of(context).padding.bottom +
-                  (_showBottomChrome ? 84 : 16),
-              left: 16,
-              right: 16,
-              child: _SelectionBar(
-                controller: _controller,
-                onSaveNote: _saveSelectionAsAnnotation,
-                onHighlight: _highlightSelection,
-                onOpenTextStudio: _openSelectedInTextStudio,
-                writingMode: widget.writingMode,
-              ),
-            ),
-          // Legend marker "từ đã lưu" — chỉ khi BẬT (READ-630-03)
-          if (_controller.showRecallMarkers &&
-              _controller.viewMode == PdfViewMode.pdfView)
-            Positioned(
-              left: 12,
-              bottom: 88,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.82),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _RecallLegendSwatch(color: Color(0xFF4CAF50), label: 'đã lưu'),
-                    _RecallLegendSwatch(color: Color(0xFFFFC107), label: 'ghi chú'),
-                    _RecallLegendSwatch(color: Color(0xFFF44336), label: 'đến kỳ ôn'),
-                  ],
-                ),
-              ),
-            ),
-        ],
+          ],
+        )
       ),
+
       floatingActionButton: AnimatedScale(
         duration: const Duration(milliseconds: 180),
         scale: showWordlistFab ? 1 : 0,

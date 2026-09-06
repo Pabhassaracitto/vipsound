@@ -57,7 +57,7 @@ class TipitakaSourceResolver {
       strategy = 'source_row';
       row = await _queryOne(
         db,
-        'WHERE b.code = ? AND s.source_table = ? AND s.source_row_key = ?',
+        'WHERE UPPER(b.code) = UPPER(?) AND s.source_table = ? AND s.source_row_key = ?',
         [anchor.bookCode, anchor.sourceTable, anchor.sourceRowKey],
       );
       if (row != null) return _location(row, strategy, databaseChanged);
@@ -67,7 +67,7 @@ class TipitakaSourceResolver {
       strategy = 'reference';
       row = await _queryOne(
         db,
-        'WHERE b.code = ? AND s.reference = ?',
+        'WHERE UPPER(b.code) = UPPER(?) AND s.reference = ?',
         [anchor.bookCode, anchor.reference],
       );
       if (row != null && _textMatches(row, anchor.selectedText)) {
@@ -79,7 +79,7 @@ class TipitakaSourceResolver {
       strategy = 'paragraph';
       row = await _queryOne(
         db,
-        'WHERE b.code = ? AND s.paragraph_no = ?',
+        'WHERE UPPER(b.code) = UPPER(?) AND s.paragraph_no = ?',
         [anchor.bookCode, anchor.paragraphNo],
       );
       if (row != null && _textMatches(row, anchor.selectedText)) {
@@ -93,7 +93,7 @@ class TipitakaSourceResolver {
       final needle = selected.length > 80 ? selected.substring(0, 80) : selected;
       row = await _queryOne(
         db,
-        'WHERE b.code = ? AND s.pali_text LIKE ?',
+        'WHERE UPPER(b.code) = UPPER(?) AND s.pali_text LIKE ?',
         [anchor.bookCode, '%$needle%'],
       );
       if (row != null) return _location(row, strategy, databaseChanged);

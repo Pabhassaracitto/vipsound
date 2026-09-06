@@ -194,3 +194,19 @@ Bài học từ Wave 0 (PDF reader): `RegExp(r'... \' ...')` — trong raw strin
 (`expected_token`, `illegal_character`, `non_bool_operand`) nhưng **grep thường không ra**
 vì chúng không phải "import thiếu". Muốn có nháy đơn trong regex: dùng raw string 3 nháy
 `r'''...'''`.
+
+## 6.2. Vòng lặp "probe → đọc log → sửa → revert probe" là **hai** commit, không phải một
+
+Lần đỏ ở Wave 1.9 (`LogicalKeyboardKey.plus` — keyboard API **không có** getter `plus`,
+phím numpad tên là `add`) cho thấy chi tiết đáng nhớ:
+
+- Commit probe phải kèm một thay đổi trong `lib/**` hoặc `test/**` (workflow lọc
+  `on.push.paths`), nếu không nó im lặng không chạy gì.
+- Với lint TẮT, `flutter analyze` chỉ còn 123 dòng ⇒ `tail -n 300` of the step **thấy
+  hết**, kể cả lỗi trong `test/**`. Đây là lúc duy nhất danh sách lỗi là đầy đủ.
+- Sửa xong, commit **revert `analysis_options.yaml`** rồi push tiếp; trạng thái head
+  cuối cùng phải là: lint BẬT + xanh. Nếu xanh, coi như `lib/**` và `test/**` không còn
+  error nào (chỉ ERROR mới fatal trong workflow này).
+- Đừng tin `git checkout <branch> -- analysis_options.yaml` khi branch đó CHÍNH LÀ đầu
+  có probe: nó khôi phục nguyên cái probe. Phải checkout từ commit **gốc trước probe**
+  (`git log --oneline -- analysis_options.yaml` để tìm).

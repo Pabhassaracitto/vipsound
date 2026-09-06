@@ -7,7 +7,7 @@
 
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
-# PROBE CI (sẽ revert): include: package:flutter_lints/flutter.yaml
+include: package:flutter_lints/flutter.yaml
 
 linter:
   # The lint rules applied to this project can be customized in the
@@ -28,9 +28,6 @@ linter:
 # https://dart.dev/guides/language/analysis-options
 analyzer:
   exclude:
-    # PROBE CI (sẽ revert): giữ noise của packages/in4up_stt ngoài analyze.log để
-    # `tail -n 300` của step còn trông thấy lỗi trong lib/**.
-    - "packages/**"
     - "backups/**"       # Bỏ qua toàn bộ file trong thư mục backups ở thư mục gốc
     - "**/backups/**"     # Bỏ qua mọi thư mục tên backups ở bất kỳ đâu trong dự án
 

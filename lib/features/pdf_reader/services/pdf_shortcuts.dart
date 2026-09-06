@@ -60,13 +60,13 @@ PdfReaderShortcut? resolvePdfReaderShortcut({
   if (!isPdfView) return null;
 
   // `+`/`-` đi cùng Shift/Ctrl vẫn có nghĩa (gõ shift+= ra `+`), nên riêng hai
-  // họ phím này được miễn kiểm tra modifier.
-  final isPlusMinus = key == LogicalKeyboardKey.equal ||
-      key == LogicalKeyboardKey.plus ||
+  // họ phím này được miễn kiểm tra modifier. Lưu ý: `LogicalKeyboardKey` KHÔNG có
+  // `plus` — phím numpad tên là `add` (đây chính là lỗi CI đỏ ở Wave 1.9).
+  final isZooming = key == LogicalKeyboardKey.equal ||
       key == LogicalKeyboardKey.minus ||
       key == LogicalKeyboardKey.numpadAdd ||
       key == LogicalKeyboardKey.numpadSubtract;
-  if (hasModifier && !isPlusMinus) return null;
+  if (hasModifier && !isZooming) return null;
 
   if (key == LogicalKeyboardKey.arrowRight ||
       key == LogicalKeyboardKey.pageDown) {
@@ -78,9 +78,7 @@ PdfReaderShortcut? resolvePdfReaderShortcut({
   }
   if (key == LogicalKeyboardKey.home) return PdfReaderShortcut.firstPage;
   if (key == LogicalKeyboardKey.end) return PdfReaderShortcut.lastPage;
-  if (key == LogicalKeyboardKey.equal ||
-      key == LogicalKeyboardKey.plus ||
-      key == LogicalKeyboardKey.numpadAdd) {
+  if (key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.numpadAdd) {
     return PdfReaderShortcut.zoomIn;
   }
   if (key == LogicalKeyboardKey.minus ||

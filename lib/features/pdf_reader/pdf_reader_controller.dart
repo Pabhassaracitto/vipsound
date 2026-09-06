@@ -23,6 +23,7 @@ import 'models/pdf_annotation.dart';
 import 'models/pdf_sentence_cue.dart';
 import 'models/pdf_word_info.dart';
 import 'services/pdf_annotation_storage.dart';
+import 'services/pdf_annotation_sidecar.dart' show mergeSidecarAnnotations;
 import 'services/pdf_file_identity.dart';
 import 'services/pdf_text_extractor.dart';
 
@@ -913,6 +914,44 @@ class PdfReaderController extends ChangeNotifier {
     await _persistAnnotations();
     notifyListeners();
     return annotation;
+  }
+
+  /// Nhập hàng loạt annotation từ tệp sidecar (`.in4up.json`).
+  ///
+  /// Là MERGE, không phải REPLACE: bấm nhầm tệp cũng không mất công đang có, và
+  /// nhập lại cùng một tệp hai lần không nhân đôi (gộp theo vị trí, xem
+  /// `mergeSidecarAnnotations`). Id được cấp lại cho phần nhập vì id trong tệp
+  /// đến từ máy khác; việc nhận dạng "đã có chưa" chạy theo vị trí chứ không
+  /// theo id.
+  ///
+  /// Trả về số annotation THỰC SỰ tăng thêm (0 = tệp không mang gì mới).
+  Future<int> importAnnotations(List<PdfAnnotation> imported) async {
+    if (imported.isEmpty) return 0;
+    final fresh = imported
+        .map((a) => PdfAnnotation(
+              id: _uuid.v4(),
+              pageIndex: a.pageIndex,
+              bounds: a.bounds,
+              lineRects: a.lineRects,
+              selectedText: a.selectedText,
+              note: a.note,
+              color: a.color,
+              type: a.type,
+              createdAt: a.createdAt,
+              textStartOffset: a.textStartOffset,
+              textEndOffset: a.textEndOffset,
+            ))
+        .toList(growable: false);
+    final merged =
+        mergeSidecarAnnotations(local: _annotations, imported: fresh);
+    // Luôn ghi lại, kể cả khi số lượng không đổi: một annotation có thể vừa được
+    // THAY bằng bản mới hơn từ tệp (same count, khác nội dung). Import là hành
+    // động hiếm ⇒ một lần ghi Hive thừa chẳng đáng gì.
+    final added = merged.length - _annotations.length;
+    _annotations = merged;
+    await _persistAnnotations();
+    notifyListeners();
+    return added;
   }
 
   /// Bookmark trang hiện tại — một chạm, đúng kiểu ReadEra.

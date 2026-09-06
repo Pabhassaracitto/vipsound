@@ -34,6 +34,7 @@ import 'services/pdf_shortcuts.dart';
 import 'services/pdf_word_hit_test.dart';
 import 'widgets/pdf_annotation_layer.dart';
 import 'widgets/pdf_annotation_sheet.dart';
+import 'widgets/pdf_export_row.dart';
 import 'widgets/pdf_page_veils.dart';
 import 'widgets/pdf_reader_theme_sheet.dart';
 import 'widgets/pdf_search_panel.dart';
@@ -1782,6 +1783,11 @@ class _PdfAnnotationManager extends StatelessWidget {
               context.uiText('${annotations.length} ghi chú đã lưu'),
               style: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
+            const SizedBox(height: 12),
+            // B1+B2 (Wave 2): công sức đánh dấu phải ra khỏi được cái máy này,
+            // và phải nhập lại được ở máy khác — nên để ngay trong bảng quản lý,
+            // không giấu sau menu.
+            PdfReaderExportRow(controller: controller),
             const SizedBox(height: 12),
             Expanded(
               child: annotations.isEmpty

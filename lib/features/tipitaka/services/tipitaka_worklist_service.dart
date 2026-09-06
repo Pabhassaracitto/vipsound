@@ -18,6 +18,18 @@ class TipitakaWorklistSaveResult {
   });
 }
 
+class TipitakaStudyCapture {
+  final TipitakaSourceAnchor anchor;
+  final TipitakaContextSnapshot snapshot;
+  final String sourceLabel;
+
+  const TipitakaStudyCapture({
+    required this.anchor,
+    required this.snapshot,
+    required this.sourceLabel,
+  });
+}
+
 /// Adapter between the Tipiṭaka reader and the existing vocabulary store.
 ///
 /// It intentionally calls [VocabularyProvider.addWithAutoClassify] so a word
@@ -26,8 +38,7 @@ class TipitakaWorklistSaveResult {
 class TipitakaWorklistService {
   const TipitakaWorklistService();
 
-  Future<TipitakaWorklistSaveResult> saveSelection({
-    required VocabularyProvider vocabulary,
+  Future<TipitakaStudyCapture> capture({
     required TipitakaBook book,
     required TipitakaSegment segment,
     required String selectedText,
@@ -37,7 +48,6 @@ class TipitakaWorklistService {
     String translationVersion = '',
     String contextBefore = '',
     String contextAfter = '',
-    VocabularyType? forceType,
   }) async {
     final selected = selectedText.trim();
     if (selected.isEmpty) {
@@ -71,10 +81,48 @@ class TipitakaWorklistService {
       paragraphNo: segment.paragraphNo,
       capturedAt: DateTime.now(),
     );
+    return TipitakaStudyCapture(
+      anchor: anchor,
+      snapshot: snapshot,
+      sourceLabel: '${index.compactLabel} · ${segment.reference}',
+    );
+  }
+
+  Future<TipitakaWorklistSaveResult> saveSelection({
+    required VocabularyProvider vocabulary,
+    required TipitakaBook book,
+    required TipitakaSegment segment,
+    required String selectedText,
+    required int startOffset,
+    required int endOffset,
+    String translationLanguage = 'vi',
+    String translationVersion = '',
+    String contextBefore = '',
+    String contextAfter = '',
+    VocabularyType? forceType,
+  }) async {
+    final selected = selectedText.trim();
+    if (selected.isEmpty) {
+      throw ArgumentError.value(selectedText, 'selectedText', 'cannot be empty');
+    }
+
+    final studyCapture = await this.capture(
+      book: book,
+      segment: segment,
+      selectedText: selected,
+      startOffset: startOffset,
+      endOffset: endOffset,
+      translationLanguage: translationLanguage,
+      translationVersion: translationVersion,
+      contextBefore: contextBefore,
+      contextAfter: contextAfter,
+    );
+    final anchor = studyCapture.anchor;
+    final snapshot = studyCapture.snapshot;
     final context = VocabContext(
       id: 'tipitaka:${anchor.stableKey}',
       sourceType: 'tipitaka',
-      sourceName: '${index.compactLabel} · ${segment.reference}',
+      sourceName: studyCapture.sourceLabel,
       pageOrPosition: segment.paragraphNo == null
           ? segment.reference
           : 'paragraph ${segment.paragraphNo}',

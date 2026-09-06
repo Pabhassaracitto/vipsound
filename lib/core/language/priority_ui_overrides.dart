@@ -1327,6 +1327,8 @@ const Map<String, Map<String, String>> priorityUiOverrides = {
   'Lưu từ vào Worklist': {'en': 'Save word to Worklist' },
   'Lưu cụm từ vào Worklist': {'en': 'Save phrase to Worklist' },
   'Lưu đoạn vào Worklist': {'en': 'Save passage to Worklist' },
+  'Học thuộc đoạn này': {'en': 'Learn this passage by heart' },
+  'Đã thêm đoạn vào Học thuộc lòng.': {'en': 'Passage added to Learn by Heart.' },
   'Sao chép lựa chọn': {'en': 'Copy selection' },
   'Đã sao chép lựa chọn.': {'en': 'Selection copied.' },
   'Đã lưu vào Worklist.': {'en': 'Saved to Worklist.' },

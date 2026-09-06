@@ -2,8 +2,10 @@ import 'package:in4up/core/language/localized_material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:in4up/features/learn_by_heart/controllers/learn_by_heart_provider.dart';
 import 'package:in4up/features/tipitaka/models/book.dart';
 import 'package:in4up/features/tipitaka/models/segment.dart';
+import 'package:in4up/features/tipitaka/services/tipitaka_learn_by_heart_service.dart';
 import 'package:in4up/features/tipitaka/services/tipitaka_worklist_service.dart';
 import 'package:in4up/models/vocabulary_type.dart';
 import 'package:in4up/providers/vocabulary_provider.dart';
@@ -322,6 +324,35 @@ class _TipitakaReaderScreenState extends State<TipitakaReaderScreen> {
     );
   }
 
+  Future<void> _learnWholeSegment(TipitakaSegment segment) async {
+    try {
+      final index = _segments.indexWhere((item) => item.id == segment.id);
+      await const TipitakaLearnByHeartService().savePassage(
+        provider: context.read<LearnByHeartProvider>(),
+        book: _worklistBook,
+        segment: segment,
+        bookName: widget.bookName.trim().isEmpty
+            ? widget.bookCode
+            : widget.bookName,
+        contextBefore: index > 0
+            ? _cleanDisplayText(_segments[index - 1].paliText)
+            : '',
+        contextAfter: index >= 0 && index + 1 < _segments.length
+            ? _cleanDisplayText(_segments[index + 1].paliText)
+            : '',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.uiText('Đã thêm đoạn vào Học thuộc lòng.'))),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.uiText('Không thể thêm vào Học thuộc lòng: $error'))),
+      );
+    }
+  }
+
   Future<void> _saveSelection(
     TipitakaSegment segment,
     String selectedText,
@@ -470,6 +501,7 @@ class _TipitakaReaderScreenState extends State<TipitakaReaderScreen> {
                 fontScale: _fontScale,
                 onPaliSelection: _onPaliSelection,
                 onSaveSegment: _saveWholeSegment,
+                onLearnSegment: _learnWholeSegment,
               );
             }
             return _buildEndOfBook(context);
@@ -555,6 +587,7 @@ class _SegmentCard extends StatelessWidget {
   final void Function(TipitakaSegment segment, TextSelection selection)?
       onPaliSelection;
   final Future<void> Function(TipitakaSegment segment)? onSaveSegment;
+  final Future<void> Function(TipitakaSegment segment)? onLearnSegment;
 
   const _SegmentCard({
     super.key,
@@ -566,6 +599,7 @@ class _SegmentCard extends StatelessWidget {
     required this.fontScale,
     this.onPaliSelection,
     this.onSaveSegment,
+    this.onLearnSegment,
   });
 
   @override
@@ -627,6 +661,13 @@ class _SegmentCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     onPressed: () => onSaveSegment!(segment),
                     icon: const Icon(Icons.bookmark_add_outlined),
+                  ),
+                if (onLearnSegment != null)
+                  IconButton(
+                    tooltip: context.uiText('Học thuộc đoạn này'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => onLearnSegment!(segment),
+                    icon: const Icon(Icons.school_outlined),
                   ),
                 Text(
                   '#$number',

@@ -7,6 +7,7 @@ export '../../models/tipitaka_source_anchor.dart';
 export 'models/language_pack.dart';
 export 'services/db_service.dart';
 export 'services/language_pack_service.dart';
+export 'services/tipitaka_learn_by_heart_service.dart';
 export 'services/tipitaka_source_resolver.dart';
 export 'services/tipitaka_task_service.dart';
 export 'services/tipitaka_worklist_service.dart';

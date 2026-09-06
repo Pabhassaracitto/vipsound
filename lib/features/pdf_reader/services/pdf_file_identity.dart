@@ -29,6 +29,8 @@ class PdfFileIdentity {
     required this.pathKey,
     required this.legacyKey,
     required this.hasStat,
+    this.fileSize = -1,
+    this.fileModifiedMs = -1,
   });
 
   /// Đường dẫn gốc khi mở (không chuẩn hoá — vẫn cần để đọc file).
@@ -46,6 +48,14 @@ class PdfFileIdentity {
 
   /// `true` khi lấy được stat (kích thước/ctime) → `primaryKey` bền vững.
   final bool hasStat;
+
+  /// Kích thước file lúc stat (`-1` khi không stat được). Sidecar xuất/nhập cần
+  /// hai giá trị thô này (chứ không phải `primaryKey`) để máy KHÁC tự tính lại
+  /// và kết luận "đúng là một file" — hash thì không so được nếu đường dẫn khác.
+  final int fileSize;
+
+  /// `modified` của file theo millisecond từ epoch (`-1` khi không stat được).
+  final int fileModifiedMs;
 
   static final Map<String, PdfFileIdentity> _cache = <String, PdfFileIdentity>{};
 
@@ -67,13 +77,15 @@ class PdfFileIdentity {
     final legacyKey = legacyKeyFor(pdfPath);
     var primaryKey = pathKey;
     var hasStat = false;
+    var fileSize = -1;
+    var fileModifiedMs = -1;
     try {
       final file = File(pdfPath);
       if (file.existsSync()) {
         final stat = file.statSync();
-        primaryKey = _hash(
-          '${stat.size}|${stat.modified.millisecondsSinceEpoch}',
-        );
+        fileSize = stat.size;
+        fileModifiedMs = stat.modified.millisecondsSinceEpoch;
+        primaryKey = _hash('$fileSize|$fileModifiedMs');
         hasStat = true;
       }
     } catch (_) {
@@ -86,6 +98,8 @@ class PdfFileIdentity {
       pathKey: pathKey,
       legacyKey: legacyKey,
       hasStat: hasStat,
+      fileSize: fileSize,
+      fileModifiedMs: fileModifiedMs,
     );
   }
 

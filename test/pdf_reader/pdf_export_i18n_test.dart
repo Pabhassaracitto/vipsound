@@ -76,7 +76,7 @@ void main() {
     test('PdfSidecarProblem -> label key, đủ 4 loại', () {
       expect(PdfSidecarProblem.values, hasLength(4));
       for (final p in PdfSidecarProblem.values) {
-        final key = const PdfSidecarDecoding.failure(p).problemLabelKey!;
+        final key = PdfSidecarDecoding.failure(p).problemLabelKey!;
         expect(kExportFlowKeys, contains(key),
             reason: 'key thông báo "$key" không nằm trong danh sách đã duyệt');
         expect(AppUITranslations.translate(key, 'en'), isNot(equals(key)));

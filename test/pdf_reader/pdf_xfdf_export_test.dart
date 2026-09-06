@@ -1,6 +1,6 @@
 // XFDF là định dạng TA không tự quyết, nên test phải giữ đúng 3 hợp đồng của
 // nó: page 0-based, toạ độ gốc dưới-trái, và XML tự cân bằng + escape.
-import 'dart:ui' show Rect;
+import 'dart:ui' show Color, Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in4up/features/pdf_reader/models/pdf_annotation.dart';

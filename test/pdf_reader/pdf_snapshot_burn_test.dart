@@ -2,7 +2,7 @@
 // DƯỚI-trái — hai hệ trục ngược nhau. Test này giữ đúng phép lật trục và phép
 // blend, vì sai một trong hai là bản in ra file ảnh bị lộn ngược hoặc mất nét.
 import 'dart:typed_data';
-import 'dart:ui' show Rect;
+import 'dart:ui' show Color, Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in4up/features/pdf_reader/models/pdf_annotation.dart';

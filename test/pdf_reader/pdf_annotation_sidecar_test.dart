@@ -143,7 +143,7 @@ void main() {
 
     test('mọi problem đều có key catalog để UI dịch (rule #5)', () {
       for (final p in PdfSidecarProblem.values) {
-        final key = const PdfSidecarDecoding.failure(p).problemLabelKey;
+        final key = PdfSidecarDecoding.failure(p).problemLabelKey;
         expect(key, isNotNull, reason: '$p thiếu nhãn thông báo');
         expect(key, isNot(contains('\n')));
       }

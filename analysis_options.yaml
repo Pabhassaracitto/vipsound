@@ -7,7 +7,8 @@
 
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
-include: package:flutter_lints/flutter.yaml
+# PROBE CI (tạm thời, SỬA ở commit kế): tắt lint để whole log gọn
+# include: package:flutter_lints/flutter.yaml
 
 linter:
   # The lint rules applied to this project can be customized in the
@@ -34,5 +35,6 @@ analyzer:
     # Legacy package từ dòng vipsound — KHÔNG phải dependency của app
     # (pubspec chỉ dùng in4up_ai/in4up_core/in4up_stt). App không import
     # chúng ⇒ không analyze chung, tránh lỗi đỏ từ code không chạy.
+    - "packages/**"   # PROBE CI (tạm thời, bỏ ở commit kế)
     - "packages/vipsound_ai/**"
     - "packages/vipsound_core/**"

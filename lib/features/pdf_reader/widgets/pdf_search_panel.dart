@@ -1,6 +1,6 @@
 // Thanh + danh sách kết quả tìm kiếm trong file PDF.
 //
-// Phần tìm KHÔNG tự viết: dùng `PdfTextSearcher` của pdfrx (quét增量 theo từng
+// Phần tìm KHÔNG tự viết: dùng `PdfTextSearcher` của pdfrx (quét dần theo từng
 // trang, có cache `loadStructuredText`, có paint callback tô sáng kết quả, và
 // tự restart khi trang vừa tải xong). Panel này chỉ là mặt nạ: nghe
 // `PdfTextSearcher` như một Listenable, dựng danh sách, và nhảy tới kết quả.
